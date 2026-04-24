@@ -2,9 +2,12 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  CheckCheck,
   ChevronRight,
   ClipboardCheck,
+  Clock3,
   Download,
+  Eye,
   Filter,
   LayoutDashboard,
   LogOut,
@@ -27,6 +30,7 @@ import {
   createNotification,
   getSupabaseSessionProfile,
   loadAppData,
+  markNotificationRead,
   repositoryMode,
   sendTelegramReport,
   updateProfileRole,
@@ -174,6 +178,30 @@ export default function App() {
     setActiveView("dashboard");
   }
 
+  async function handleNotificationRead(notificationId: string) {
+    if (!user) return;
+    const notification = data.notifications.find((item) => item.id === notificationId);
+    if (!notification || notification.readBy.includes(user.id)) return;
+
+    try {
+      const updated = await markNotificationRead(
+        notification.id,
+        user.id,
+        notification.readBy,
+        user.source === "demo",
+      );
+      setData((current) => ({
+        ...current,
+        notifications: current.notifications.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      }));
+      showToast("Уведомление отмечено как прочитанное.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось обновить статус.");
+    }
+  }
+
   if (loading && data.profiles.length === 0) {
     return (
       <main className="splash">
@@ -207,7 +235,12 @@ export default function App() {
       user={user}
     >
       {activeView === "dashboard" ? (
-        <DashboardView data={data} setActiveView={setActiveView} user={user} />
+        <DashboardView
+          data={data}
+          onMarkNotificationRead={handleNotificationRead}
+          setActiveView={setActiveView}
+          user={user}
+        />
       ) : null}
       {activeView === "journal" ? (
         <JournalView data={data} setData={setData} showToast={showToast} user={user} />
@@ -220,7 +253,13 @@ export default function App() {
       ) : null}
       {activeView === "reports" ? <ReportsView data={data} showToast={showToast} user={user} /> : null}
       {activeView === "notifications" ? (
-        <NotificationsView data={data} setData={setData} showToast={showToast} user={user} />
+        <NotificationsView
+          data={data}
+          onMarkNotificationRead={handleNotificationRead}
+          setData={setData}
+          showToast={showToast}
+          user={user}
+        />
       ) : null}
       {toast ? (
         <div className="toast">
@@ -340,10 +379,12 @@ function AppShell({
 
 function DashboardView({
   data,
+  onMarkNotificationRead,
   setActiveView,
   user,
 }: {
   data: AppData;
+  onMarkNotificationRead: (notificationId: string) => void;
   setActiveView: (view: ViewKey) => void;
   user: SessionUser;
 }) {
@@ -452,7 +493,15 @@ function DashboardView({
         </div>
         <div className="notification-strip">
           {relevantNotes.length ? (
-            relevantNotes.map((note) => <NotificationCard data={data} key={note.id} note={note} />)
+            relevantNotes.map((note) => (
+              <NotificationCard
+                data={data}
+                key={note.id}
+                note={note}
+                onMarkRead={onMarkNotificationRead}
+                user={user}
+              />
+            ))
           ) : (
             <EmptyState title="Нет уведомлений" text="Сообщения по пропускам и расписанию появятся здесь." />
           )}
@@ -1138,16 +1187,19 @@ function ReportsView({
 
 function NotificationsView({
   data,
+  onMarkNotificationRead,
   setData,
   showToast,
   user,
 }: {
   data: AppData;
+  onMarkNotificationRead: (notificationId: string) => void;
   setData: Dispatch<SetStateAction<AppData>>;
   showToast: (message: string) => void;
   user: SessionUser;
 }) {
   const canSend = user.role === "admin" || user.role === "teacher";
+  const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const [form, setForm] = useState<NotificationInput>({
     title: "Важное сообщение",
     message: "Проверьте изменения в расписании.",
@@ -1157,7 +1209,11 @@ function NotificationsView({
     createdBy: user.id,
     type: "system",
   });
-  const visibleNotes = getRelevantNotifications(data, user);
+  const relevantNotes = getRelevantNotifications(data, user);
+  const unreadNotes = relevantNotes.filter((note) => !note.readBy.includes(user.id));
+  const readNotes = relevantNotes.filter((note) => note.readBy.includes(user.id));
+  const visibleNotes =
+    filter === "unread" ? unreadNotes : filter === "read" ? readNotes : relevantNotes;
 
   async function submitNotification() {
     try {
@@ -1239,9 +1295,45 @@ function NotificationsView({
         </section>
       ) : null}
 
+      <section className="surface notification-summary">
+        <div>
+          <p className="eyebrow">Статус</p>
+          <h2>Сообщения</h2>
+        </div>
+        <div className="status-tabs" role="tablist" aria-label="Фильтр уведомлений">
+          <button
+            className={filter === "all" ? "active" : ""}
+            onClick={() => setFilter("all")}
+            type="button"
+          >
+            Все <b>{relevantNotes.length}</b>
+          </button>
+          <button
+            className={filter === "unread" ? "active" : ""}
+            onClick={() => setFilter("unread")}
+            type="button"
+          >
+            Новые <b>{unreadNotes.length}</b>
+          </button>
+          <button
+            className={filter === "read" ? "active" : ""}
+            onClick={() => setFilter("read")}
+            type="button"
+          >
+            Прочитано <b>{readNotes.length}</b>
+          </button>
+        </div>
+      </section>
+
       <section className="notification-list">
         {visibleNotes.map((note) => (
-          <NotificationCard data={data} key={note.id} note={note} />
+          <NotificationCard
+            data={data}
+            key={note.id}
+            note={note}
+            onMarkRead={onMarkNotificationRead}
+            user={user}
+          />
         ))}
         {!visibleNotes.length ? <EmptyState title="Нет уведомлений" text="Администратор или преподаватель могут создать рассылку." /> : null}
       </section>
@@ -1301,22 +1393,58 @@ function LessonCard({ data, lessonId }: { data: AppData; lessonId: string }) {
   );
 }
 
-function NotificationCard({ data, note }: { data: AppData; note: AppData["notifications"][number] }) {
+function NotificationCard({
+  data,
+  note,
+  onMarkRead,
+  user,
+}: {
+  data: AppData;
+  note: AppData["notifications"][number];
+  onMarkRead?: (notificationId: string) => void;
+  user?: SessionUser;
+}) {
   const group = findGroup(data.groups, note.groupId);
   const targetUser = findProfile(data.profiles, note.userId);
   const author = findProfile(data.profiles, note.createdBy);
+  const stats = notificationReadStats(data, note);
+  const isUnread = user ? !note.readBy.includes(user.id) : false;
+  const isStaff = user?.role === "admin" || user?.role === "teacher";
 
   return (
-    <article className={`notification-card ${note.type}`}>
-      <div>
-        <strong>{note.title}</strong>
-        <small>{formatDateTimeRu(note.createdAt)}</small>
+    <article className={`notification-card ${note.type} ${isUnread ? "unread" : ""}`}>
+      <div className="notification-card-head">
+        <div>
+          <strong>{note.title}</strong>
+          <small>{formatDateTimeRu(note.createdAt)}</small>
+        </div>
+        <span className={`read-state ${isUnread ? "unread" : "read"}`}>
+          {isUnread ? <Clock3 size={14} /> : <CheckCheck size={14} />}
+          {isUnread ? "Новое" : "Прочитано"}
+        </span>
       </div>
       <p>{note.message}</p>
+      <div className="delivery-row">
+        <span>
+          <Send size={14} />
+          {stats.delivered} доставлено
+        </span>
+        <span>
+          <Eye size={14} />
+          {stats.read} прочитали
+        </span>
+        {isStaff && stats.unread > 0 ? <span>{stats.unread} ожидают</span> : null}
+      </div>
       <footer>
         <span>{note.audience === "all" ? "Все" : group?.name ?? targetUser?.fullName ?? "Адресат"}</span>
         <span>{author?.fullName ?? "Система"}</span>
       </footer>
+      {isUnread && onMarkRead ? (
+        <button className="ghost-btn mark-read-btn" onClick={() => onMarkRead(note.id)} type="button">
+          <CheckCheck size={16} />
+          Отметить прочитанным
+        </button>
+      ) : null}
     </article>
   );
 }
@@ -1354,6 +1482,29 @@ function getRelevantNotifications(data: AppData, user: SessionUser) {
   return data.notifications
     .filter((note) => note.audience === "all" || note.userId === user.id || note.groupId === user.groupId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function notificationRecipients(data: AppData, note: AppData["notifications"][number]) {
+  if (note.audience === "user") {
+    return data.profiles.filter((profile) => profile.id === note.userId);
+  }
+
+  if (note.audience === "group") {
+    return data.profiles.filter((profile) => profile.groupId === note.groupId);
+  }
+
+  return data.profiles;
+}
+
+function notificationReadStats(data: AppData, note: AppData["notifications"][number]) {
+  const recipients = notificationRecipients(data, note);
+  const delivered = recipients.length;
+  const read = recipients.filter((profile) => note.readBy.includes(profile.id)).length;
+  return {
+    delivered,
+    read,
+    unread: Math.max(delivered - read, 0),
+  };
 }
 
 function hasAbsenceNotification(data: AppData, userId: string, date: string) {

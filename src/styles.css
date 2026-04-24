@@ -1,25 +1,27 @@
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #182230;
-  background: #f5f7fb;
+  color: #172033;
+  background: #f6f8fc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --bg: #f5f7fb;
+  --bg: #f6f8fc;
   --surface: #ffffff;
-  --surface-strong: #f8fafc;
-  --ink: #182230;
-  --muted: #667085;
-  --line: #d9e2ec;
-  --line-strong: #bdc9d8;
-  --blue: #124e78;
-  --green: #2f7d63;
-  --rose: #a43e52;
-  --amber: #a16207;
-  --violet: #6d4bb4;
-  --focus: #0f766e;
-  --shadow: 0 18px 50px rgba(20, 37, 63, 0.12);
+  --surface-strong: #f7f9fd;
+  --ink: #172033;
+  --muted: #68758a;
+  --line: #dce4ef;
+  --line-strong: #b8c4d6;
+  --blue: #2563eb;
+  --green: #0d9488;
+  --rose: #e11d48;
+  --amber: #d97706;
+  --violet: #7c3aed;
+  --focus: #2563eb;
+  --sidebar: #141822;
+  --sidebar-soft: #202839;
+  --shadow: 0 18px 46px rgba(23, 32, 51, 0.1);
 }
 
 * {
@@ -31,8 +33,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(90deg, rgba(18, 78, 120, 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(18, 78, 120, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px),
     var(--bg);
   background-size: 48px 48px;
 }
@@ -76,7 +78,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 label {
@@ -116,7 +118,7 @@ label {
 
 .auth-copy {
   color: #ffffff;
-  background: #14251f;
+  background: linear-gradient(135deg, #171b26 0%, #21283a 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   min-height: min(680px, calc(100vh - 8rem));
@@ -184,7 +186,7 @@ label {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 14px 44px rgba(20, 37, 63, 0.08);
+  box-shadow: 0 14px 38px rgba(23, 32, 51, 0.07);
 }
 
 .auth-panel {
@@ -356,7 +358,7 @@ label {
 
 .input-shell:focus-within {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .input-shell input {
@@ -404,8 +406,8 @@ label {
 }
 
 .primary-btn {
-  border: 1px solid #0f5c56;
-  background: #0f766e;
+  border: 1px solid #1d4ed8;
+  background: var(--blue);
   color: #ffffff;
   padding: 0.75rem 0.95rem;
 }
@@ -441,7 +443,7 @@ label {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: #14251f;
+  background: var(--sidebar);
   color: #ffffff;
   padding: 1rem;
   display: flex;
@@ -455,7 +457,7 @@ label {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--sidebar-soft);
 }
 
 .sidebar-brand span {
@@ -486,7 +488,7 @@ label {
 
 .nav-item.active {
   background: #ffffff;
-  color: #14251f;
+  color: var(--sidebar);
 }
 
 .nav-count {
@@ -547,9 +549,9 @@ label {
 }
 
 .role-pill.teacher {
-  color: #2f7d63;
-  background: #e8f7f1;
-  border-color: #bfe7d7;
+  color: #0f766e;
+  background: #ecfeff;
+  border-color: #a5f3fc;
 }
 
 .role-pill.student {
@@ -678,6 +680,21 @@ label {
   gap: 0.75rem;
 }
 
+.notification-card.unread {
+  border-color: #bfdbfe;
+  background: #fbfdff;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08);
+}
+
+.notification-card-head,
+.delivery-row,
+.notification-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
 .notification-card.absence {
   border-left-color: var(--rose);
 }
@@ -699,6 +716,82 @@ label {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.delivery-row {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.delivery-row span,
+.read-state {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.58rem;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.read-state.read {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.read-state.unread {
+  color: #9f1239;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.mark-read-btn {
+  justify-self: start;
+  min-height: 38px;
+}
+
+.status-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.status-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  font-weight: 850;
+}
+
+.status-tabs button.active {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(23, 32, 51, 0.08);
+}
+
+.status-tabs b {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #e8eef8;
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .toolbar,
@@ -778,9 +871,9 @@ label {
 
 .status-chip.good,
 .status-btn.good.active {
-  background: #e8f7f1;
-  color: #216a52;
-  border-color: #bfe7d7;
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
 }
 
 .status-chip.warn,
@@ -926,10 +1019,10 @@ label {
   right: 1rem;
   bottom: 1rem;
   z-index: 30;
-  border: 1px solid #bfe7d7;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
-  background: #e8f7f1;
-  color: #216a52;
+  background: #eff6ff;
+  color: #1d4ed8;
   padding: 0.8rem 1rem;
   display: flex;
   align-items: center;
@@ -1047,6 +1140,8 @@ label {
   }
 
   .notification-card footer,
+  .notification-card-head,
+  .notification-summary,
   .section-head,
   .panel-head {
     align-items: flex-start;
@@ -1055,6 +1150,11 @@ label {
 
   .search-box {
     width: 100%;
+  }
+
+  .status-tabs {
+    width: 100%;
+    overflow-x: auto;
   }
 
   .status-actions {

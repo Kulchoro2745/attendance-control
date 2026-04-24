@@ -384,6 +384,35 @@ export async function updateProfileRole(profileId: string, role: Role, forceDemo
   return profile;
 }
 
+export async function markNotificationRead(
+  notificationId: string,
+  userId: string,
+  readBy: string[],
+  forceDemo = false,
+) {
+  const nextReadBy = Array.from(new Set([...readBy, userId]));
+
+  if (isSupabaseConfigured && !forceDemo) {
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from("notifications")
+      .update({ read_by: nextReadBy })
+      .eq("id", notificationId)
+      .select("*")
+      .single();
+
+    failIfError(error);
+    return toNotification(data as DbNotification);
+  }
+
+  const data = loadDemoData();
+  const notification = data.notifications.find((item) => item.id === notificationId);
+  if (!notification) throw new Error("Уведомление не найдено.");
+  notification.readBy = nextReadBy;
+  saveDemoData(data);
+  return notification;
+}
+
 export async function sendTelegramReport(input: {
   groupId: string | null;
   dateFrom: string;
