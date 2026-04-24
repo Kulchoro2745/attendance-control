@@ -110,7 +110,7 @@ label {
 .auth-page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(340px, 560px);
+  grid-template-columns: minmax(420px, 1fr) minmax(340px, 560px);
   gap: clamp(1.5rem, 4vw, 4rem);
   align-items: center;
   padding: clamp(1rem, 4vw, 4rem);
@@ -122,11 +122,12 @@ label {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   min-height: min(680px, calc(100vh - 8rem));
-  padding: clamp(2rem, 6vw, 4.5rem);
+  padding: 3.25rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .brand-mark,
@@ -142,11 +143,12 @@ label {
 }
 
 .auth-copy h1 {
-  max-width: 780px;
+  max-width: 100%;
   margin: auto 0 1rem;
-  font-size: clamp(2.2rem, 6vw, 5rem);
-  line-height: 0.98;
+  font-size: 3.6rem;
+  line-height: 1.06;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .auth-copy p {
@@ -1036,6 +1038,14 @@ label {
 }
 
 @media (max-width: 1180px) {
+  .auth-copy {
+    padding: 2.5rem;
+  }
+
+  .auth-copy h1 {
+    font-size: 3.2rem;
+  }
+
   .kpi-grid,
   .dashboard-grid,
   .split-grid {
@@ -1059,6 +1069,10 @@ label {
 
   .auth-copy {
     min-height: auto;
+  }
+
+  .auth-copy h1 {
+    font-size: 2.7rem;
   }
 
   .app-shell {
@@ -1113,6 +1127,14 @@ label {
 
   .auth-page {
     padding: 0.85rem;
+  }
+
+  .auth-copy {
+    padding: 1.5rem;
+  }
+
+  .auth-copy h1 {
+    font-size: 2.2rem;
   }
 
   .kpi-grid,
