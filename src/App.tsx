@@ -77,6 +77,7 @@ const emptyData: AppData = {
   lessons: [],
   attendance: [],
   notifications: [],
+  notificationDeliveries: [],
 };
 
 const navItems: Array<{ key: ViewKey; label: string; icon: typeof LayoutDashboard }> = [
@@ -181,7 +182,7 @@ export default function App() {
   async function handleNotificationRead(notificationId: string) {
     if (!user) return;
     const notification = data.notifications.find((item) => item.id === notificationId);
-    if (!notification || notification.readBy.includes(user.id)) return;
+    if (!notification || isNotificationReadBy(data, notification, user.id)) return;
 
     try {
       const updated = await markNotificationRead(
@@ -193,7 +194,11 @@ export default function App() {
       setData((current) => ({
         ...current,
         notifications: current.notifications.map((item) =>
-          item.id === updated.id ? updated : item,
+          item.id === updated.notification.id ? updated.notification : item,
+        ),
+        notificationDeliveries: upsertLocalDelivery(
+          current.notificationDeliveries,
+          updated.delivery,
         ),
       }));
       showToast("Уведомление отмечено как прочитанное.");
@@ -291,7 +296,9 @@ function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const group = findGroup(data.groups, user.groupId);
   const relevantNotifications = getRelevantNotifications(data, user);
-  const unreadCount = relevantNotifications.filter((note) => !note.readBy.includes(user.id)).length;
+  const unreadCount = relevantNotifications.filter(
+    (note) => !isNotificationReadBy(data, note, user.id),
+  ).length;
 
   return (
     <div className="app-shell">
@@ -584,7 +591,7 @@ function JournalView({
 
       if (status === "absent" && !hasAbsenceNotification(data, student.id, selectedDate)) {
         const subject = findSubject(data.subjects, selectedLesson.subjectId);
-        const notification = await createNotification(
+        const created = await createNotification(
           {
             title: "Пропуск занятия",
             message: `${student.fullName}: ${formatDateRu(selectedDate)}, ${subject?.title ?? "занятие"} отмечено как пропуск.`,
@@ -598,7 +605,8 @@ function JournalView({
         );
         setData((current) => ({
           ...current,
-          notifications: [notification, ...current.notifications],
+          notifications: [created.notification, ...current.notifications],
+          notificationDeliveries: [...created.deliveries, ...current.notificationDeliveries],
         }));
       }
 
@@ -1210,16 +1218,21 @@ function NotificationsView({
     type: "system",
   });
   const relevantNotes = getRelevantNotifications(data, user);
-  const unreadNotes = relevantNotes.filter((note) => !note.readBy.includes(user.id));
-  const readNotes = relevantNotes.filter((note) => note.readBy.includes(user.id));
+  const unreadNotes = relevantNotes.filter((note) => !isNotificationReadBy(data, note, user.id));
+  const readNotes = relevantNotes.filter((note) => isNotificationReadBy(data, note, user.id));
   const visibleNotes =
     filter === "unread" ? unreadNotes : filter === "read" ? readNotes : relevantNotes;
+  const deliveryTotals = aggregateNotificationStats(data, relevantNotes);
 
   async function submitNotification() {
     try {
       const payload = normalizeNotificationTarget(form);
-      const notification = await createNotification(payload, user.source === "demo");
-      setData((current) => ({ ...current, notifications: [notification, ...current.notifications] }));
+      const created = await createNotification(payload, user.source === "demo");
+      setData((current) => ({
+        ...current,
+        notifications: [created.notification, ...current.notifications],
+        notificationDeliveries: [...created.deliveries, ...current.notificationDeliveries],
+      }));
       showToast("Уведомление отправлено.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Не удалось отправить уведомление.");
@@ -1299,6 +1312,20 @@ function NotificationsView({
         <div>
           <p className="eyebrow">Статус</p>
           <h2>Сообщения</h2>
+        </div>
+        <div className="notification-kpis" aria-label="Сводка доставки">
+          <span>
+            <Send size={14} />
+            {deliveryTotals.delivered}/{deliveryTotals.total}
+          </span>
+          <span>
+            <Eye size={14} />
+            {deliveryTotals.read}
+          </span>
+          <span>
+            <Clock3 size={14} />
+            {deliveryTotals.waiting}
+          </span>
         </div>
         <div className="status-tabs" role="tablist" aria-label="Фильтр уведомлений">
           <button
@@ -1408,7 +1435,7 @@ function NotificationCard({
   const targetUser = findProfile(data.profiles, note.userId);
   const author = findProfile(data.profiles, note.createdBy);
   const stats = notificationReadStats(data, note);
-  const isUnread = user ? !note.readBy.includes(user.id) : false;
+  const isUnread = user ? !isNotificationReadBy(data, note, user.id) : false;
   const isStaff = user?.role === "admin" || user?.role === "teacher";
 
   return (
@@ -1427,14 +1454,21 @@ function NotificationCard({
       <div className="delivery-row">
         <span>
           <Send size={14} />
-          {stats.delivered} доставлено
+          {stats.delivered}/{stats.total} доставлено
         </span>
         <span>
           <Eye size={14} />
           {stats.read} прочитали
         </span>
-        {isStaff && stats.unread > 0 ? <span>{stats.unread} ожидают</span> : null}
+        {stats.telegramSent > 0 ? <span>{stats.telegramSent} Telegram</span> : null}
+        {isStaff && stats.waiting > 0 ? <span>{stats.waiting} ожидают</span> : null}
+        {isStaff && stats.failed > 0 ? <span className="danger-text">{stats.failed} ошибок</span> : null}
       </div>
+      {isStaff && stats.total > 0 ? (
+        <div className="delivery-progress" aria-label={`Прочитано ${percent(stats.read, stats.total)}%`}>
+          <span style={{ width: `${percent(stats.read, stats.total)}%` }} />
+        </div>
+      ) : null}
       <footer>
         <span>{note.audience === "all" ? "Все" : group?.name ?? targetUser?.fullName ?? "Адресат"}</span>
         <span>{author?.fullName ?? "Система"}</span>
@@ -1498,13 +1532,85 @@ function notificationRecipients(data: AppData, note: AppData["notifications"][nu
 
 function notificationReadStats(data: AppData, note: AppData["notifications"][number]) {
   const recipients = notificationRecipients(data, note);
-  const delivered = recipients.length;
-  const read = recipients.filter((profile) => note.readBy.includes(profile.id)).length;
+  const appDeliveries = data.notificationDeliveries.filter(
+    (delivery) => delivery.notificationId === note.id && delivery.channel === "app",
+  );
+  const deliveriesByProfile = new Map(
+    appDeliveries.map((delivery) => [delivery.profileId, delivery]),
+  );
+  const hasDeliveryRows = appDeliveries.length > 0;
+  const delivered = recipients.filter((profile) => {
+    const delivery = deliveriesByProfile.get(profile.id);
+    if (!hasDeliveryRows) return true;
+    return Boolean(
+      delivery && ["sent", "delivered", "read"].includes(delivery.status),
+    );
+  }).length;
+  const read = recipients.filter((profile) => isNotificationReadBy(data, note, profile.id)).length;
+  const failed = appDeliveries.filter((delivery) => delivery.status === "failed").length;
+  const telegramSent = data.notificationDeliveries.filter(
+    (delivery) =>
+      delivery.notificationId === note.id &&
+      delivery.channel === "telegram" &&
+      ["sent", "delivered", "read"].includes(delivery.status),
+  ).length;
+
   return {
+    total: recipients.length,
     delivered,
     read,
-    unread: Math.max(delivered - read, 0),
+    waiting: Math.max(recipients.length - read - failed, 0),
+    failed,
+    telegramSent,
   };
+}
+
+function aggregateNotificationStats(data: AppData, notes: AppData["notifications"]) {
+  return notes.reduce(
+    (acc, note) => {
+      const stats = notificationReadStats(data, note);
+      acc.total += stats.total;
+      acc.delivered += stats.delivered;
+      acc.read += stats.read;
+      acc.waiting += stats.waiting;
+      acc.failed += stats.failed;
+      return acc;
+    },
+    { total: 0, delivered: 0, read: 0, waiting: 0, failed: 0 },
+  );
+}
+
+function notificationDeliveryFor(
+  data: AppData,
+  note: AppData["notifications"][number],
+  profileId: string,
+) {
+  return data.notificationDeliveries.find(
+    (delivery) =>
+      delivery.notificationId === note.id &&
+      delivery.profileId === profileId &&
+      delivery.channel === "app",
+  );
+}
+
+function isNotificationReadBy(
+  data: AppData,
+  note: AppData["notifications"][number],
+  profileId: string,
+) {
+  const delivery = notificationDeliveryFor(data, note, profileId);
+  if (delivery) return delivery.status === "read" || Boolean(delivery.readAt);
+  return note.readBy.includes(profileId);
+}
+
+function upsertLocalDelivery(
+  deliveries: AppData["notificationDeliveries"],
+  delivery: AppData["notificationDeliveries"][number],
+) {
+  const existingIndex = deliveries.findIndex((item) => item.id === delivery.id);
+  if (existingIndex < 0) return [delivery, ...deliveries];
+
+  return deliveries.map((item, index) => (index === existingIndex ? delivery : item));
 }
 
 function hasAbsenceNotification(data: AppData, userId: string, date: string) {

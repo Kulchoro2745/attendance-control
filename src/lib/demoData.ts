@@ -296,6 +296,52 @@ export const demoData: AppData = {
       readBy: ["student_azamat"],
     },
   ],
+  notificationDeliveries: [
+    {
+      id: "delivery_note_1_student_bekbolot",
+      notificationId: "note_1",
+      profileId: "student_bekbolot",
+      channel: "app",
+      status: "delivered",
+      deliveredAt: new Date().toISOString(),
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: "delivery_note_2_student_azamat",
+      notificationId: "note_2",
+      profileId: "student_azamat",
+      channel: "app",
+      status: "read",
+      deliveredAt: addDaysISO(-1) + "T09:30:00.000Z",
+      readAt: addDaysISO(-1) + "T10:02:00.000Z",
+      createdAt: addDaysISO(-1) + "T09:30:00.000Z",
+      updatedAt: addDaysISO(-1) + "T10:02:00.000Z",
+    },
+    {
+      id: "delivery_note_2_student_aigerim",
+      notificationId: "note_2",
+      profileId: "student_aigerim",
+      channel: "app",
+      status: "delivered",
+      deliveredAt: addDaysISO(-1) + "T09:30:00.000Z",
+      readAt: null,
+      createdAt: addDaysISO(-1) + "T09:30:00.000Z",
+      updatedAt: addDaysISO(-1) + "T09:30:00.000Z",
+    },
+    {
+      id: "delivery_note_2_student_bekbolot",
+      notificationId: "note_2",
+      profileId: "student_bekbolot",
+      channel: "app",
+      status: "delivered",
+      deliveredAt: addDaysISO(-1) + "T09:30:00.000Z",
+      readAt: null,
+      createdAt: addDaysISO(-1) + "T09:30:00.000Z",
+      updatedAt: addDaysISO(-1) + "T09:30:00.000Z",
+    },
+  ],
 };
 
 const STORAGE_KEY = "attendiq-demo-data-v1";
@@ -304,19 +350,72 @@ function cloneDemoData() {
   return JSON.parse(JSON.stringify(demoData)) as AppData;
 }
 
+function demoRecipients(data: AppData, notificationId: string) {
+  const note = data.notifications.find((item) => item.id === notificationId);
+  if (!note) return [];
+
+  if (note.audience === "user") {
+    return data.profiles.filter((profile) => profile.id === note.userId);
+  }
+
+  if (note.audience === "group") {
+    return data.profiles.filter((profile) => profile.groupId === note.groupId);
+  }
+
+  return data.profiles;
+}
+
+function ensureDemoShape(data: AppData) {
+  const now = new Date().toISOString();
+  data.notificationDeliveries ??= [];
+
+  for (const note of data.notifications) {
+    for (const recipient of demoRecipients(data, note.id)) {
+      const exists = data.notificationDeliveries.some(
+        (delivery) =>
+          delivery.notificationId === note.id &&
+          delivery.profileId === recipient.id &&
+          delivery.channel === "app",
+      );
+      if (exists) continue;
+
+      const isRead = note.readBy.includes(recipient.id);
+      data.notificationDeliveries.push({
+        id: uidForDemoDelivery(note.id, recipient.id),
+        notificationId: note.id,
+        profileId: recipient.id,
+        channel: "app",
+        status: isRead ? "read" : "delivered",
+        deliveredAt: note.createdAt,
+        readAt: isRead ? note.createdAt : null,
+        createdAt: note.createdAt,
+        updatedAt: now,
+      });
+    }
+  }
+
+  return data;
+}
+
+function uidForDemoDelivery(notificationId: string, profileId: string) {
+  return `delivery_${notificationId}_${profileId}`;
+}
+
 export function loadDemoData() {
-  if (typeof window === "undefined") return cloneDemoData();
+  if (typeof window === "undefined") return ensureDemoShape(cloneDemoData());
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    const initialData = cloneDemoData();
+    const initialData = ensureDemoShape(cloneDemoData());
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
     return initialData;
   }
 
   try {
-    return JSON.parse(raw) as AppData;
+    const parsed = ensureDemoShape(JSON.parse(raw) as AppData);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    return parsed;
   } catch {
-    const initialData = cloneDemoData();
+    const initialData = ensureDemoShape(cloneDemoData());
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
     return initialData;
   }

@@ -725,6 +725,14 @@ label {
   flex-wrap: wrap;
 }
 
+.notification-kpis {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.notification-kpis span,
 .delivery-row span,
 .read-state {
   min-height: 30px;
@@ -738,6 +746,30 @@ label {
   padding: 0.25rem 0.58rem;
   font-size: 0.74rem;
   font-weight: 850;
+}
+
+.notification-kpis span {
+  background: #ffffff;
+}
+
+.delivery-progress {
+  height: 7px;
+  border-radius: 999px;
+  background: #edf2f8;
+  overflow: hidden;
+}
+
+.delivery-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #0d9488);
+}
+
+.danger-text {
+  color: #9f1239 !important;
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
 }
 
 .read-state.read {

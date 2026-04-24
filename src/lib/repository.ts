@@ -6,6 +6,9 @@ import type {
   GroupInput,
   Lesson,
   LessonInput,
+  NotificationDelivery,
+  NotificationDeliveryChannel,
+  NotificationDeliveryStatus,
   NotificationInput,
   NotificationItem,
   Profile,
@@ -78,6 +81,30 @@ type DbNotification = {
   created_at: string;
   type: NotificationItem["type"];
   read_by: string[] | null;
+};
+
+type DbNotificationDelivery = {
+  id: string;
+  notification_id: string;
+  profile_id: string;
+  channel: NotificationDeliveryChannel;
+  status: NotificationDeliveryStatus;
+  delivered_at: string | null;
+  read_at: string | null;
+  telegram_message_id: number | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreatedNotificationResult = {
+  notification: NotificationItem;
+  deliveries: NotificationDelivery[];
+};
+
+export type ReadNotificationResult = {
+  notification: NotificationItem;
+  delivery: NotificationDelivery;
 };
 
 export const repositoryMode = isSupabaseConfigured ? "supabase" : "demo";
@@ -156,6 +183,22 @@ function toNotification(row: DbNotification): NotificationItem {
   };
 }
 
+function toNotificationDelivery(row: DbNotificationDelivery): NotificationDelivery {
+  return {
+    id: row.id,
+    notificationId: row.notification_id,
+    profileId: row.profile_id,
+    channel: row.channel,
+    status: row.status,
+    deliveredAt: row.delivered_at,
+    readAt: row.read_at,
+    telegramMessageId: row.telegram_message_id ?? undefined,
+    errorMessage: row.error_message ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function assertSupabase() {
   if (!supabase) {
     throw new Error("Supabase не настроен. Заполните .env.local или используйте демо-режим.");
@@ -183,18 +226,36 @@ export async function loadAppData(forceDemo = false): Promise<AppData> {
   if (forceDemo || !isSupabaseConfigured) return loadDemoData();
 
   const client = assertSupabase();
-  const [profiles, groups, subjects, lessons, attendance, notifications] = await Promise.all([
+  const [
+    profiles,
+    groups,
+    subjects,
+    lessons,
+    attendance,
+    notifications,
+    notificationDeliveries,
+  ] = await Promise.all([
     client.from("profiles").select("*").order("full_name"),
     client.from("groups").select("*").order("course", { ascending: false }).order("name"),
     client.from("subjects").select("*").order("title"),
     client.from("lessons").select("*").order("weekday").order("starts_at"),
     client.from("attendance_records").select("*").order("date", { ascending: false }),
     client.from("notifications").select("*").order("created_at", { ascending: false }),
+    client
+      .from("notification_deliveries")
+      .select("*")
+      .order("created_at", { ascending: false }),
   ]);
 
-  [profiles, groups, subjects, lessons, attendance, notifications].forEach((result) =>
-    failIfError(result.error),
-  );
+  [
+    profiles,
+    groups,
+    subjects,
+    lessons,
+    attendance,
+    notifications,
+    notificationDeliveries,
+  ].forEach((result) => failIfError(result.error));
 
   return {
     profiles: ((profiles.data ?? []) as DbProfile[]).map(toProfile),
@@ -203,6 +264,9 @@ export async function loadAppData(forceDemo = false): Promise<AppData> {
     lessons: ((lessons.data ?? []) as DbLesson[]).map(toLesson),
     attendance: ((attendance.data ?? []) as DbAttendance[]).map(toAttendance),
     notifications: ((notifications.data ?? []) as DbNotification[]).map(toNotification),
+    notificationDeliveries: ((notificationDeliveries.data ?? []) as DbNotificationDelivery[]).map(
+      toNotificationDelivery,
+    ),
   };
 }
 
@@ -253,7 +317,22 @@ export async function upsertAttendance(input: AttendanceInput, forceDemo = false
   return record;
 }
 
-export async function createNotification(input: NotificationInput, forceDemo = false) {
+function notificationRecipientsFromData(data: AppData, notification: NotificationItem) {
+  if (notification.audience === "user") {
+    return data.profiles.filter((profile) => profile.id === notification.userId);
+  }
+
+  if (notification.audience === "group") {
+    return data.profiles.filter((profile) => profile.groupId === notification.groupId);
+  }
+
+  return data.profiles;
+}
+
+export async function createNotification(
+  input: NotificationInput,
+  forceDemo = false,
+): Promise<CreatedNotificationResult> {
   if (isSupabaseConfigured && !forceDemo) {
     const client = assertSupabase();
     const { data, error } = await client
@@ -271,7 +350,17 @@ export async function createNotification(input: NotificationInput, forceDemo = f
       .single();
 
     failIfError(error);
-    return toNotification(data as DbNotification);
+    const notification = toNotification(data as DbNotification);
+    const deliveries = await client
+      .from("notification_deliveries")
+      .select("*")
+      .eq("notification_id", notification.id);
+
+    failIfError(deliveries.error);
+    return {
+      notification,
+      deliveries: ((deliveries.data ?? []) as DbNotificationDelivery[]).map(toNotificationDelivery),
+    };
   }
 
   const data = loadDemoData();
@@ -287,9 +376,23 @@ export async function createNotification(input: NotificationInput, forceDemo = f
     readBy: [],
     createdAt: new Date().toISOString(),
   };
+  const deliveries: NotificationDelivery[] = notificationRecipientsFromData(data, notification).map(
+    (profile) => ({
+      id: uid("delivery"),
+      notificationId: notification.id,
+      profileId: profile.id,
+      channel: "app",
+      status: "delivered",
+      deliveredAt: notification.createdAt,
+      readAt: null,
+      createdAt: notification.createdAt,
+      updatedAt: notification.createdAt,
+    }),
+  );
   data.notifications.unshift(notification);
+  data.notificationDeliveries.unshift(...deliveries);
   saveDemoData(data);
-  return notification;
+  return { notification, deliveries };
 }
 
 export async function createGroup(input: GroupInput, forceDemo = false) {
@@ -389,28 +492,73 @@ export async function markNotificationRead(
   userId: string,
   readBy: string[],
   forceDemo = false,
-) {
+): Promise<ReadNotificationResult> {
   const nextReadBy = Array.from(new Set([...readBy, userId]));
 
   if (isSupabaseConfigured && !forceDemo) {
     const client = assertSupabase();
-    const { data, error } = await client
-      .from("notifications")
-      .update({ read_by: nextReadBy })
-      .eq("id", notificationId)
+    const now = new Date().toISOString();
+    const { data: delivery, error: deliveryError } = await client
+      .from("notification_deliveries")
+      .upsert(
+        {
+          notification_id: notificationId,
+          profile_id: userId,
+          channel: "app",
+          status: "read",
+          delivered_at: now,
+          read_at: now,
+        },
+        { onConflict: "notification_id,profile_id,channel" },
+      )
       .select("*")
       .single();
 
-    failIfError(error);
-    return toNotification(data as DbNotification);
+    failIfError(deliveryError);
+
+    const { data: notification, error: notificationError } = await client
+      .from("notifications")
+      .select("*")
+      .eq("id", notificationId)
+      .single();
+
+    failIfError(notificationError);
+    return {
+      notification: toNotification(notification as DbNotification),
+      delivery: toNotificationDelivery(delivery as DbNotificationDelivery),
+    };
   }
 
   const data = loadDemoData();
   const notification = data.notifications.find((item) => item.id === notificationId);
   if (!notification) throw new Error("Уведомление не найдено.");
   notification.readBy = nextReadBy;
+  const now = new Date().toISOString();
+  let delivery = data.notificationDeliveries.find(
+    (item) =>
+      item.notificationId === notificationId && item.profileId === userId && item.channel === "app",
+  );
+  if (!delivery) {
+    delivery = {
+      id: uid("delivery"),
+      notificationId,
+      profileId: userId,
+      channel: "app",
+      status: "read",
+      deliveredAt: now,
+      readAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    data.notificationDeliveries.unshift(delivery);
+  } else {
+    delivery.status = "read";
+    delivery.deliveredAt ??= now;
+    delivery.readAt ??= now;
+    delivery.updatedAt = now;
+  }
   saveDemoData(data);
-  return notification;
+  return { notification, delivery };
 }
 
 export async function sendTelegramReport(input: {

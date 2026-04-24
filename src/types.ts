@@ -4,6 +4,10 @@ export type AttendanceStatus = "present" | "late" | "absent" | "excused";
 
 export type NotificationAudience = "all" | "group" | "user";
 
+export type NotificationDeliveryChannel = "app" | "telegram";
+
+export type NotificationDeliveryStatus = "pending" | "sent" | "delivered" | "read" | "failed";
+
 export type ViewKey =
   | "dashboard"
   | "journal"
@@ -74,6 +78,20 @@ export interface NotificationItem {
   readBy: string[];
 }
 
+export interface NotificationDelivery {
+  id: string;
+  notificationId: string;
+  profileId: string;
+  channel: NotificationDeliveryChannel;
+  status: NotificationDeliveryStatus;
+  deliveredAt: string | null;
+  readAt: string | null;
+  telegramMessageId?: number;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppData {
   profiles: Profile[];
   groups: Group[];
@@ -81,6 +99,7 @@ export interface AppData {
   lessons: Lesson[];
   attendance: AttendanceRecord[];
   notifications: NotificationItem[];
+  notificationDeliveries: NotificationDelivery[];
 }
 
 export interface SessionUser extends Profile {

@@ -12,6 +12,20 @@ type TelegramUpdate = {
     };
     text?: string;
   };
+  callback_query?: {
+    id: string;
+    data?: string;
+    from: {
+      id: number;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+    };
+    message?: {
+      message_id: number;
+      chat: { id: number };
+    };
+  };
 };
 
 const allowedUsernames = new Set(
@@ -55,6 +69,34 @@ async function sendMessage(chatId: number, text: string) {
   }
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert = false) {
+  if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
+
+  await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      callback_query_id: callbackQueryId,
+      text,
+      show_alert: showAlert,
+    }),
+  });
+}
+
+async function clearInlineKeyboard(chatId: number, messageId: number) {
+  if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
+
+  await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: { inline_keyboard: [] },
+    }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: true });
 
@@ -64,6 +106,51 @@ Deno.serve(async (req) => {
   }
 
   const update = (await req.json()) as TelegramUpdate;
+  const callbackQuery = update.callback_query;
+  if (callbackQuery) {
+    const username = callbackQuery.from.username?.replace(/^@/, "") ?? "";
+    const normalizedUsername = username.toLowerCase();
+
+    if (!allowedUsernames.has(normalizedUsername)) {
+      await answerCallbackQuery(
+        callbackQuery.id,
+        "Доступ к отчетам ограничен.",
+        true,
+      );
+      return json({ ok: true });
+    }
+
+    const callbackData = callbackQuery.data ?? "";
+    if (callbackData.startsWith("report_read:")) {
+      const deliveryId = callbackData.replace("report_read:", "");
+      const readAt = new Date().toISOString();
+
+      await supabaseAdmin
+        .from("telegram_report_deliveries")
+        .update({ status: "read", read_at: readAt })
+        .eq("id", deliveryId)
+        .eq("telegram_user_id", callbackQuery.from.id);
+
+      await supabaseAdmin
+        .from("telegram_subscriptions")
+        .update({ last_seen_at: readAt })
+        .eq("telegram_user_id", callbackQuery.from.id);
+
+      if (callbackQuery.message) {
+        await clearInlineKeyboard(
+          callbackQuery.message.chat.id,
+          callbackQuery.message.message_id,
+        );
+      }
+
+      await answerCallbackQuery(callbackQuery.id, "Просмотр отчета зафиксирован.");
+      return json({ ok: true });
+    }
+
+    await answerCallbackQuery(callbackQuery.id, "Команда не распознана.");
+    return json({ ok: true });
+  }
+
   const message = update.message;
   const from = message?.from;
   const chatId = message?.chat.id;

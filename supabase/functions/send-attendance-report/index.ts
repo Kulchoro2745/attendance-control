@@ -20,6 +20,21 @@ type AttendanceRecord = {
   status: "present" | "late" | "absent" | "excused";
 };
 
+type TelegramSubscription = {
+  id: string;
+  telegram_user_id: number;
+  chat_id: number;
+  username: string | null;
+};
+
+type TelegramSendResult = {
+  ok: boolean;
+  result?: {
+    message_id?: number;
+  };
+  description?: string;
+};
+
 const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -61,7 +76,11 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;");
 }
 
-async function sendMessage(chatId: number, text: string) {
+async function sendMessage(
+  chatId: number,
+  text: string,
+  replyMarkup?: Record<string, unknown>,
+) {
   if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
 
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -72,13 +91,16 @@ async function sendMessage(chatId: number, text: string) {
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     }),
   });
+  const payload = (await response.json().catch(() => null)) as TelegramSendResult | null;
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Telegram sendMessage failed: ${errorText}`);
+    throw new Error(`Telegram sendMessage failed: ${payload?.description ?? response.statusText}`);
   }
+
+  return payload;
 }
 
 Deno.serve(async (req) => {
@@ -173,24 +195,83 @@ Deno.serve(async (req) => {
 
   const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin
     .from("telegram_subscriptions")
-    .select("chat_id, username")
-    .eq("is_active", true);
+    .select("id, telegram_user_id, chat_id, username")
+    .eq("is_active", true)
+    .returns<TelegramSubscription[]>();
   if (subscriptionsError) throw subscriptionsError;
+
+  const { data: reportRun, error: runError } = await supabaseAdmin
+    .from("telegram_report_runs")
+    .insert({
+      requested_by: requester.id,
+      group_id: groupId,
+      date_from: dateFrom,
+      date_to: dateTo,
+      sent_count: 0,
+      status: "pending",
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (runError || !reportRun) throw runError ?? new Error("Report run was not created");
 
   let sentCount = 0;
   for (const subscription of subscriptions ?? []) {
-    await sendMessage(Number(subscription.chat_id), reportText);
-    sentCount += 1;
+    const { data: delivery, error: deliveryError } = await supabaseAdmin
+      .from("telegram_report_deliveries")
+      .insert({
+        report_run_id: reportRun.id,
+        telegram_subscription_id: subscription.id,
+        telegram_user_id: subscription.telegram_user_id,
+        chat_id: subscription.chat_id,
+        username: subscription.username,
+        status: "pending",
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (deliveryError || !delivery) throw deliveryError ?? new Error("Delivery row was not created");
+
+    try {
+      const sent = await sendMessage(Number(subscription.chat_id), reportText, {
+        inline_keyboard: [
+          [
+            {
+              text: "Прочитано",
+              callback_data: `report_read:${delivery.id}`,
+            },
+          ],
+        ],
+      });
+
+      await supabaseAdmin
+        .from("telegram_report_deliveries")
+        .update({
+          status: "sent",
+          telegram_message_id: sent?.result?.message_id ?? null,
+          sent_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id);
+      sentCount += 1;
+    } catch (error) {
+      await supabaseAdmin
+        .from("telegram_report_deliveries")
+        .update({
+          status: "failed",
+          error_message: error instanceof Error ? error.message : "Telegram send failed",
+        })
+        .eq("id", delivery.id);
+    }
   }
 
-  await supabaseAdmin.from("telegram_report_runs").insert({
-    requested_by: requester.id,
-    group_id: groupId,
-    date_from: dateFrom,
-    date_to: dateTo,
+  await supabaseAdmin.from("telegram_report_runs").update({
     sent_count: sentCount,
-    status: "sent",
-  });
+    status:
+      sentCount === 0
+        ? "failed"
+        : sentCount === (subscriptions ?? []).length
+          ? "sent"
+          : "partial",
+  }).eq("id", reportRun.id);
 
   return json({ ok: true, sentCount });
 });
