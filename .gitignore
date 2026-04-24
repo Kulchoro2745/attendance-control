@@ -1,0 +1,13 @@
+node_modules
+dist
+output
+.env
+.env.local
+.DS_Store
+*.log
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+supabase/functions/.env
+supabase/.env
+supabase/.temp
