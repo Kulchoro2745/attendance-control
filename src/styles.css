@@ -1,27 +1,28 @@
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172033;
-  background: #f6f8fc;
+  color: #111827;
+  background: #f4f7fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --bg: #f6f8fc;
+  --bg: #f4f7fb;
   --surface: #ffffff;
-  --surface-strong: #f7f9fd;
-  --ink: #172033;
-  --muted: #68758a;
-  --line: #dce4ef;
-  --line-strong: #b8c4d6;
-  --blue: #2563eb;
-  --green: #0d9488;
-  --rose: #e11d48;
-  --amber: #d97706;
-  --violet: #7c3aed;
-  --focus: #2563eb;
-  --sidebar: #141822;
-  --sidebar-soft: #202839;
-  --shadow: 0 18px 46px rgba(23, 32, 51, 0.1);
+  --surface-strong: #f8fafc;
+  --ink: #111827;
+  --muted: #667085;
+  --line: #d8e1ee;
+  --line-strong: #aebdd0;
+  --blue: #2f63d9;
+  --green: #0f8f7a;
+  --rose: #d92d54;
+  --amber: #c96f12;
+  --violet: #7048e8;
+  --focus: #2f63d9;
+  --sidebar: #101622;
+  --sidebar-soft: #1c2636;
+  --shadow: 0 20px 54px rgba(16, 24, 40, 0.09);
+  --shadow-soft: 0 10px 28px rgba(16, 24, 40, 0.06);
 }
 
 * {
@@ -32,11 +33,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(90deg, rgba(37, 99, 235, 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px),
-    var(--bg);
-  background-size: 48px 48px;
+  background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 42%, #eef3f8 100%);
 }
 
 button,
@@ -64,7 +61,9 @@ textarea {
   background: #ffffff;
   color: var(--ink);
   outline: none;
-  padding: 0.75rem 0.85rem;
+  min-height: 44px;
+  padding: 0.72rem 0.85rem;
+  font-weight: 600;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
@@ -109,6 +108,8 @@ label {
 
 .auth-page {
   min-height: 100vh;
+  width: min(100%, 1500px);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(340px, 560px);
   gap: clamp(1.5rem, 4vw, 4rem);
@@ -118,10 +119,10 @@ label {
 
 .auth-copy {
   color: #ffffff;
-  background: linear-gradient(135deg, #171b26 0%, #21283a 100%);
+  background: linear-gradient(145deg, #111827 0%, #1d2737 58%, #17363f 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  min-height: min(680px, calc(100vh - 8rem));
+  min-height: min(620px, calc(100vh - 8rem));
   padding: 3.25rem;
   display: flex;
   flex-direction: column;
@@ -145,8 +146,8 @@ label {
 .auth-copy h1 {
   max-width: 100%;
   margin: auto 0 1rem;
-  font-size: 3.6rem;
-  line-height: 1.06;
+  font-size: 3.4rem;
+  line-height: 1.08;
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
@@ -155,7 +156,7 @@ label {
   max-width: 640px;
   margin: 0;
   color: rgba(255, 255, 255, 0.78);
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-size: 1.08rem;
   line-height: 1.65;
 }
 
@@ -185,14 +186,14 @@ label {
 
 .auth-panel,
 .surface {
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 14px 38px rgba(23, 32, 51, 0.07);
+  box-shadow: var(--shadow-soft);
 }
 
 .auth-panel {
-  padding: clamp(1.25rem, 3vw, 2rem);
+  padding: 1.6rem;
 }
 
 .panel-head,
@@ -208,7 +209,7 @@ label {
 .section-head h2,
 .topbar h1 {
   margin: 0;
-  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  font-size: 1.45rem;
   letter-spacing: 0;
 }
 
@@ -216,8 +217,8 @@ label {
   margin: 0 0 0.25rem;
   color: var(--muted);
   font-size: 0.73rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -239,6 +240,7 @@ label {
   gap: 0.85rem;
   padding: 0.85rem;
   text-align: left;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -264,7 +266,7 @@ label {
 .ghost-btn:hover,
 .icon-btn:hover {
   border-color: var(--line-strong);
-  box-shadow: 0 10px 24px rgba(20, 37, 63, 0.08);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.07);
 }
 
 .demo-user:hover {
@@ -290,7 +292,7 @@ label {
   place-items: center;
   color: #ffffff;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 800;
   flex: 0 0 auto;
 }
 
@@ -339,13 +341,13 @@ label {
   padding: 0.65rem 0.75rem;
   background: transparent;
   color: var(--muted);
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .segmented button.active {
   background: #ffffff;
   color: var(--ink);
-  box-shadow: 0 4px 16px rgba(20, 37, 63, 0.08);
+  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.08);
 }
 
 .input-shell {
@@ -404,14 +406,19 @@ label {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .primary-btn {
-  border: 1px solid #1d4ed8;
+  border: 1px solid #2858c8;
   background: var(--blue);
   color: #ffffff;
   padding: 0.75rem 0.95rem;
+  box-shadow: 0 10px 20px rgba(47, 99, 217, 0.16);
+}
+
+.primary-btn:hover {
+  background: #2858c8;
 }
 
 .primary-btn.inline,
@@ -437,7 +444,7 @@ label {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -447,15 +454,15 @@ label {
   height: 100vh;
   background: var(--sidebar);
   color: #ffffff;
-  padding: 1rem;
+  padding: 1rem 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
 }
 
 .brand-icon {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   display: grid;
   place-items: center;
@@ -474,23 +481,24 @@ label {
 }
 
 .nav-item {
-  min-height: 44px;
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.74);
+  color: rgba(255, 255, 255, 0.72);
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.65rem;
   padding: 0.65rem 0.75rem;
   text-align: left;
-  font-weight: 800;
+  font-weight: 750;
 }
 
 .nav-item.active {
   background: #ffffff;
   color: var(--sidebar);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 
 .nav-count {
@@ -511,11 +519,13 @@ label {
   padding: 0.9rem;
   display: grid;
   gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .workspace {
   min-width: 0;
   padding: clamp(1rem, 2.5vw, 2rem);
+  max-width: 1500px;
 }
 
 .topbar {
@@ -537,7 +547,7 @@ label {
   border-radius: 999px;
   padding: 0.28rem 0.68rem;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 800;
   border: 1px solid var(--line);
   color: var(--muted);
   background: #ffffff;
@@ -545,9 +555,9 @@ label {
 }
 
 .role-pill.admin {
-  color: #124e78;
-  background: #e8f3fb;
-  border-color: #c5dfef;
+  color: #1851b4;
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .role-pill.teacher {
@@ -563,7 +573,7 @@ label {
 }
 
 .surface {
-  padding: clamp(1rem, 2vw, 1.25rem);
+  padding: 1.25rem;
 }
 
 .kpi-grid {
@@ -573,15 +583,15 @@ label {
 }
 
 .metric-card {
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   border: 1px solid var(--line);
-  border-left: 5px solid var(--blue);
+  border-top: 4px solid var(--blue);
   border-radius: 8px;
   padding: 1rem;
-  min-height: 128px;
+  min-height: 118px;
   display: grid;
   align-content: space-between;
-  box-shadow: 0 12px 36px rgba(20, 37, 63, 0.07);
+  box-shadow: var(--shadow-soft);
 }
 
 .metric-card span,
@@ -591,28 +601,29 @@ label {
 }
 
 .metric-card strong {
-  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-size: 2.55rem;
   letter-spacing: 0;
   line-height: 1;
+  font-weight: 800;
 }
 
 .metric-card.green {
-  border-left-color: var(--green);
+  border-top-color: var(--green);
 }
 
 .metric-card.rose {
-  border-left-color: var(--rose);
+  border-top-color: var(--rose);
 }
 
 .metric-card.amber {
-  border-left-color: var(--amber);
+  border-top-color: var(--amber);
 }
 
 .dashboard-grid,
 .split-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .lesson-list,
@@ -633,10 +644,11 @@ label {
   border-radius: 8px;
   background: #ffffff;
   min-height: 72px;
-  padding: 0.75rem;
+  padding: 0.82rem;
   display: grid;
   align-items: center;
   gap: 0.75rem;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
 }
 
 .lesson-row {
@@ -655,8 +667,8 @@ label {
 
 .mini-bar,
 .stacked-bar {
-  height: 9px;
-  background: #e9eef5;
+  height: 8px;
+  background: #edf2f7;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -674,18 +686,19 @@ label {
 
 .notification-card {
   border: 1px solid var(--line);
-  border-left: 5px solid var(--blue);
+  border-left: 4px solid var(--blue);
   border-radius: 8px;
   background: #ffffff;
   padding: 1rem;
   display: grid;
   gap: 0.75rem;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
 }
 
 .notification-card.unread {
   border-color: #bfdbfe;
-  background: #fbfdff;
-  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08);
+  background: #fcfdff;
+  box-shadow: 0 14px 34px rgba(47, 99, 217, 0.08);
 }
 
 .notification-card-head,
@@ -707,8 +720,8 @@ label {
 
 .notification-card p {
   margin: 0;
-  color: #344054;
-  line-height: 1.55;
+  color: #2f3a4c;
+  line-height: 1.6;
 }
 
 .notification-card footer {
@@ -717,7 +730,7 @@ label {
   gap: 0.75rem;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .delivery-row {
@@ -728,7 +741,7 @@ label {
 .notification-kpis {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
 }
 
@@ -745,15 +758,27 @@ label {
   gap: 0.35rem;
   padding: 0.25rem 0.58rem;
   font-size: 0.74rem;
-  font-weight: 850;
+  font-weight: 760;
 }
 
 .notification-kpis span {
   background: #ffffff;
+  padding-right: 0.72rem;
+}
+
+.notification-kpis b {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.notification-kpis small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .delivery-progress {
-  height: 7px;
+  height: 6px;
   border-radius: 999px;
   background: #edf2f8;
   overflow: hidden;
@@ -808,7 +833,7 @@ label {
   align-items: center;
   gap: 0.45rem;
   padding: 0.45rem 0.7rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .status-tabs button.active {
@@ -832,7 +857,7 @@ label {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 0.85rem;
+  gap: 0.9rem;
   align-items: end;
 }
 
@@ -859,14 +884,15 @@ label {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
 }
 
 .attendance-row.head {
   min-height: 40px;
-  background: var(--surface-strong);
+  background: #f8fafc;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .person-cell {
@@ -893,7 +919,7 @@ label {
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .status-chip {
@@ -954,7 +980,7 @@ label {
   min-height: 420px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.92);
   padding: 0.75rem;
 }
 
@@ -963,7 +989,7 @@ label {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .day-head b {
@@ -979,7 +1005,7 @@ label {
 
 .lesson-card {
   border: 1px solid var(--line);
-  border-left: 5px solid var(--blue);
+  border-left: 4px solid var(--blue);
   border-radius: 8px;
   background: #ffffff;
   padding: 0.85rem;
@@ -1006,6 +1032,7 @@ label {
   display: grid;
   gap: 0.75rem;
   align-content: start;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
 }
 
 .groups-strip {
@@ -1014,7 +1041,7 @@ label {
 
 .group-card {
   border: 1px solid var(--line);
-  border-top: 5px solid var(--blue);
+  border-top: 4px solid var(--blue);
   border-radius: 8px;
   background: #ffffff;
   padding: 1rem;
@@ -1040,7 +1067,7 @@ label {
   align-items: center;
   gap: 0.75rem;
   color: var(--muted);
-  background: var(--surface-strong);
+  background: #f8fafc;
 }
 
 .empty-state strong {
@@ -1061,7 +1088,7 @@ label {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  font-weight: 850;
+  font-weight: 800;
   box-shadow: var(--shadow);
 }
 
@@ -1075,7 +1102,7 @@ label {
   }
 
   .auth-copy h1 {
-    font-size: 3.2rem;
+    font-size: 3rem;
   }
 
   .kpi-grid,
@@ -1104,7 +1131,7 @@ label {
   }
 
   .auth-copy h1 {
-    font-size: 2.7rem;
+    font-size: 2.6rem;
   }
 
   .app-shell {
@@ -1166,7 +1193,7 @@ label {
   }
 
   .auth-copy h1 {
-    font-size: 2.2rem;
+    font-size: 2.15rem;
   }
 
   .kpi-grid,
@@ -1209,6 +1236,14 @@ label {
   .status-tabs {
     width: 100%;
     overflow-x: auto;
+  }
+
+  .notification-kpis {
+    width: 100%;
+  }
+
+  .notification-kpis span {
+    flex: 1 1 120px;
   }
 
   .status-actions {

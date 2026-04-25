@@ -1316,15 +1316,18 @@ function NotificationsView({
         <div className="notification-kpis" aria-label="Сводка доставки">
           <span>
             <Send size={14} />
-            {deliveryTotals.delivered}/{deliveryTotals.total}
+            <b>{deliveryTotals.delivered}/{deliveryTotals.total}</b>
+            <small>доставлено</small>
           </span>
           <span>
             <Eye size={14} />
-            {deliveryTotals.read}
+            <b>{deliveryTotals.read}</b>
+            <small>прочитано</small>
           </span>
           <span>
             <Clock3 size={14} />
-            {deliveryTotals.waiting}
+            <b>{deliveryTotals.waiting}</b>
+            <small>ожидают</small>
           </span>
         </div>
         <div className="status-tabs" role="tablist" aria-label="Фильтр уведомлений">
