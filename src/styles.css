@@ -619,6 +619,10 @@ label {
   border-top-color: var(--amber);
 }
 
+.metric-card.violet {
+  border-top-color: var(--violet);
+}
+
 .dashboard-grid,
 .split-grid {
   display: grid;
@@ -631,6 +635,7 @@ label {
 .notification-strip,
 .notification-list,
 .day-lessons,
+.relation-grid,
 .people-grid,
 .groups-strip {
   display: grid;
@@ -659,6 +664,48 @@ label {
   width: 12px;
   height: 46px;
   border-radius: 999px;
+}
+
+.avatar.mini {
+  width: 30px;
+  height: 30px;
+  font-size: 0.68rem;
+}
+
+.relation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.relation-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.relation-line {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: auto minmax(90px, 0.35fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.relation-line .lesson-dot {
+  height: 30px;
+}
+
+.relation-line small {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .risk-row {
@@ -1058,6 +1105,104 @@ label {
   grid-template-columns: minmax(260px, 1fr) minmax(120px, 0.8fr) 58px 58px 58px;
 }
 
+.grades-table,
+.grade-feed {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.grades-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 86px minmax(120px, 0.45fr) minmax(260px, 1fr);
+  gap: 0.8rem;
+  align-items: center;
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.grades-row.head {
+  min-height: 40px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.category-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.category-stack span,
+.final-mark {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.62rem;
+  color: var(--muted);
+  background: var(--surface-strong);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.final-mark.excellent,
+.final-mark.good {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.final-mark.warn {
+  color: #84540b;
+  background: #fff7df;
+  border-color: #f4d88a;
+}
+
+.final-mark.danger {
+  color: #8f1d37;
+  background: #fff1f3;
+  border-color: #f1a8b7;
+}
+
+.grade-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  min-height: 68px;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.grade-card .lesson-dot {
+  height: 34px;
+}
+
+.grade-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.grade-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.grade-card small {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .empty-state {
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
@@ -1166,11 +1311,14 @@ label {
 
   .attendance-row,
   .attendance-row.head,
-  .report-row {
+  .report-row,
+  .grades-row,
+  .grades-row.head {
     grid-template-columns: 1fr;
   }
 
-  .attendance-row.head {
+  .attendance-row.head,
+  .grades-row.head {
     display: none;
   }
 
@@ -1199,6 +1347,7 @@ label {
   .kpi-grid,
   .dashboard-grid,
   .split-grid,
+  .relation-grid,
   .toolbar,
   .form-grid,
   .form-grid.two,
@@ -1211,12 +1360,15 @@ label {
   }
 
   .lesson-row,
-  .risk-row {
+  .risk-row,
+  .relation-line,
+  .grade-card {
     grid-template-columns: auto 1fr;
   }
 
   .lesson-row b,
-  .lesson-row span:last-child {
+  .lesson-row span:last-child,
+  .grade-card b {
     grid-column: 2;
   }
 

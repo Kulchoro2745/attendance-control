@@ -34,6 +34,16 @@ export const demoData: AppData = {
       avatarTone: "#8a4f21",
     },
     {
+      id: "teacher_dinara",
+      fullName: "Айтматова Динара Саматовна",
+      email: "aitmatova@komteh.edu",
+      role: "teacher",
+      groupId: null,
+      position: "Преподаватель математики и аналитики",
+      phone: "+996 555 010 104",
+      avatarTone: "#2f63d9",
+    },
+    {
       id: "student_azamat",
       fullName: "Маматов Азамат Нурбекович",
       email: "azamat@student.komteh.edu",
@@ -145,6 +155,49 @@ export const demoData: AppData = {
       shortTitle: "QA",
       color: "#a43e52",
     },
+    {
+      id: "subject_math",
+      title: "Математика",
+      shortTitle: "Мат",
+      color: "#c96f12",
+    },
+  ],
+  subjectTeacherAssignments: [
+    {
+      id: "subteach_web_askar",
+      subjectId: "subject_web",
+      teacherId: "teacher_askar",
+      groupId: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "subteach_db_gulnara",
+      subjectId: "subject_db",
+      teacherId: "teacher_gulnara",
+      groupId: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "subteach_math_dinara",
+      subjectId: "subject_math",
+      teacherId: "teacher_dinara",
+      groupId: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "subteach_math_askar_povt",
+      subjectId: "subject_math",
+      teacherId: "teacher_askar",
+      groupId: "group_povt_41",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "subteach_math_gulnara_is",
+      subjectId: "subject_math",
+      teacherId: "teacher_gulnara",
+      groupId: "group_is_31",
+      createdAt: new Date().toISOString(),
+    },
   ],
   lessons: [
     {
@@ -186,6 +239,16 @@ export const demoData: AppData = {
       startsAt: "13:00",
       endsAt: "14:30",
       room: "312",
+    },
+    {
+      id: "lesson_math_wed",
+      groupId: "group_povt_41",
+      subjectId: "subject_math",
+      teacherId: "teacher_dinara",
+      weekday: 2,
+      startsAt: "10:45",
+      endsAt: "12:15",
+      room: "207",
     },
     {
       id: "lesson_db_thu",
@@ -268,6 +331,116 @@ export const demoData: AppData = {
       note: "Справка",
       markedBy: "teacher_gulnara",
       updatedAt: new Date().toISOString(),
+    },
+  ],
+  gradeCategories: [
+    {
+      id: "gradecat_current",
+      subjectId: "subject_math",
+      groupId: null,
+      title: "Текущий контроль",
+      coefficient: 1,
+      color: "#2f63d9",
+      sortOrder: 10,
+    },
+    {
+      id: "gradecat_practice",
+      subjectId: "subject_math",
+      groupId: null,
+      title: "Практика",
+      coefficient: 2,
+      color: "#0f8f7a",
+      sortOrder: 20,
+    },
+    {
+      id: "gradecat_exam",
+      subjectId: "subject_math",
+      groupId: null,
+      title: "Контрольная",
+      coefficient: 3,
+      color: "#d92d54",
+      sortOrder: 30,
+    },
+    {
+      id: "gradecat_project",
+      subjectId: "subject_web",
+      groupId: "group_povt_41",
+      title: "Проект",
+      coefficient: 4,
+      color: "#7048e8",
+      sortOrder: 40,
+    },
+  ],
+  grades: [
+    {
+      id: "grade_azamat_math_1",
+      studentId: "student_azamat",
+      subjectId: "subject_math",
+      categoryId: "gradecat_current",
+      lessonId: "lesson_math_wed",
+      title: "Домашняя работа",
+      score: 88,
+      maxScore: 100,
+      gradedAt: todayISO(),
+      comment: "Стабильная работа",
+      createdBy: "teacher_dinara",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "grade_azamat_math_2",
+      studentId: "student_azamat",
+      subjectId: "subject_math",
+      categoryId: "gradecat_exam",
+      lessonId: "lesson_math_wed",
+      title: "Контрольная 1",
+      score: 82,
+      maxScore: 100,
+      gradedAt: todayISO(),
+      comment: "",
+      createdBy: "teacher_dinara",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "grade_aigerim_math_1",
+      studentId: "student_aigerim",
+      subjectId: "subject_math",
+      categoryId: "gradecat_current",
+      lessonId: "lesson_math_wed",
+      title: "Домашняя работа",
+      score: 94,
+      maxScore: 100,
+      gradedAt: todayISO(),
+      comment: "",
+      createdBy: "teacher_dinara",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "grade_aigerim_math_2",
+      studentId: "student_aigerim",
+      subjectId: "subject_math",
+      categoryId: "gradecat_practice",
+      lessonId: "lesson_math_wed",
+      title: "Практическая",
+      score: 90,
+      maxScore: 100,
+      gradedAt: addDaysISO(-2),
+      comment: "",
+      createdBy: "teacher_dinara",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "grade_bekbolot_math_1",
+      studentId: "student_bekbolot",
+      subjectId: "subject_math",
+      categoryId: "gradecat_current",
+      lessonId: "lesson_math_wed",
+      title: "Домашняя работа",
+      score: 61,
+      maxScore: 100,
+      gradedAt: todayISO(),
+      comment: "Нужно закрыть пробелы",
+      createdBy: "teacher_dinara",
+      createdAt: new Date().toISOString(),
     },
   ],
   notifications: [
@@ -367,6 +540,16 @@ function demoRecipients(data: AppData, notificationId: string) {
 
 function ensureDemoShape(data: AppData) {
   const now = new Date().toISOString();
+  const defaults = cloneDemoData();
+  mergeMissingById(data.profiles, defaults.profiles);
+  mergeMissingById(data.subjects, defaults.subjects);
+  mergeMissingById(data.lessons, defaults.lessons);
+  data.subjectTeacherAssignments ??= [];
+  data.gradeCategories ??= [];
+  data.grades ??= [];
+  mergeMissingById(data.subjectTeacherAssignments, defaults.subjectTeacherAssignments);
+  mergeMissingById(data.gradeCategories, defaults.gradeCategories);
+  mergeMissingById(data.grades, defaults.grades);
   data.notificationDeliveries ??= [];
 
   for (const note of data.notifications) {
@@ -395,6 +578,12 @@ function ensureDemoShape(data: AppData) {
   }
 
   return data;
+}
+
+function mergeMissingById<T extends { id: string }>(target: T[], source: T[]) {
+  for (const item of source) {
+    if (!target.some((existing) => existing.id === item.id)) target.push(item);
+  }
 }
 
 function uidForDemoDelivery(notificationId: string, profileId: string) {

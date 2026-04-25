@@ -9,7 +9,9 @@ import {
   Download,
   Eye,
   Filter,
+  GraduationCap,
   LayoutDashboard,
+  Link2,
   LogOut,
   Menu,
   Plus,
@@ -25,9 +27,12 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { AuthScreen } from "./components/AuthScreen";
 import {
   createDemoProfile,
+  createGrade,
+  createGradeCategory,
   createGroup,
   createLesson,
   createNotification,
+  createSubjectTeacherAssignment,
   getSupabaseSessionProfile,
   loadAppData,
   markNotificationRead,
@@ -41,6 +46,8 @@ import type {
   AppData,
   AttendanceStatus,
   GroupInput,
+  GradeCategoryInput,
+  GradeInput,
   LessonInput,
   NotificationAudience,
   NotificationInput,
@@ -48,6 +55,7 @@ import type {
   ProfileInput,
   Role,
   SessionUser,
+  SubjectTeacherInput,
   ViewKey,
 } from "./types";
 import {
@@ -74,8 +82,11 @@ const emptyData: AppData = {
   profiles: [],
   groups: [],
   subjects: [],
+  subjectTeacherAssignments: [],
   lessons: [],
   attendance: [],
+  gradeCategories: [],
+  grades: [],
   notifications: [],
   notificationDeliveries: [],
 };
@@ -85,6 +96,7 @@ const navItems: Array<{ key: ViewKey; label: string; icon: typeof LayoutDashboar
   { key: "journal", label: "Журнал", icon: ClipboardCheck },
   { key: "schedule", label: "Расписание", icon: CalendarDays },
   { key: "directory", label: "Люди и группы", icon: UsersRound },
+  { key: "grades", label: "Оценки", icon: GraduationCap },
   { key: "reports", label: "Отчеты", icon: Filter },
   { key: "notifications", label: "Уведомления", icon: Bell },
 ];
@@ -255,6 +267,9 @@ export default function App() {
       ) : null}
       {activeView === "directory" ? (
         <DirectoryView data={data} setData={setData} showToast={showToast} user={user} />
+      ) : null}
+      {activeView === "grades" ? (
+        <GradesView data={data} setData={setData} showToast={showToast} user={user} />
       ) : null}
       {activeView === "reports" ? <ReportsView data={data} showToast={showToast} user={user} /> : null}
       {activeView === "notifications" ? (
@@ -726,6 +741,12 @@ function ScheduleView({
 }) {
   const canManage = user.role === "admin";
   const teachers = data.profiles.filter((profile) => profile.role === "teacher" || profile.role === "admin");
+  const [assignmentForm, setAssignmentForm] = useState<SubjectTeacherInput>({
+    subjectId: data.subjects[0]?.id ?? "",
+    teacherId: teachers[0]?.id ?? "",
+    groupId: null,
+    createdBy: user.id,
+  });
   const [form, setForm] = useState<LessonInput>({
     groupId: data.groups[0]?.id ?? "",
     subjectId: data.subjects[0]?.id ?? "",
@@ -735,6 +756,22 @@ function ScheduleView({
     endsAt: "10:30",
     room: "310",
   });
+  const teacherOptions = teacherCandidatesForSubject(data, form.subjectId, form.groupId, teachers);
+  const assignedBySubject = data.subjects.map((subject) => ({
+    subject,
+    assignments: data.subjectTeacherAssignments.filter((item) => item.subjectId === subject.id),
+  }));
+  const loadByTeacher = teachers.map((teacher) => ({
+    teacher,
+    assignments: data.subjectTeacherAssignments.filter((item) => item.teacherId === teacher.id),
+  }));
+
+  useEffect(() => {
+    if (!teacherOptions.length) return;
+    if (!form.teacherId || !teacherOptions.some((teacher) => teacher.id === form.teacherId)) {
+      setForm((current) => ({ ...current, teacherId: teacherOptions[0]?.id ?? null }));
+    }
+  }, [form.teacherId, teacherOptions]);
 
   async function submitLesson() {
     if (!form.groupId || !form.subjectId) return;
@@ -747,75 +784,176 @@ function ScheduleView({
     }
   }
 
+  async function submitAssignment() {
+    if (!assignmentForm.subjectId || !assignmentForm.teacherId) return;
+    try {
+      const assignment = await createSubjectTeacherAssignment(
+        { ...assignmentForm, createdBy: user.id },
+        user.source === "demo",
+      );
+      setData((current) => ({
+        ...current,
+        subjectTeacherAssignments: [assignment, ...current.subjectTeacherAssignments],
+      }));
+      showToast("Связь преподавателя и предмета добавлена.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось добавить связь.");
+    }
+  }
+
   return (
     <section className="view-stack">
       {canManage ? (
-        <section className="surface">
-          <div className="section-head">
-            <div>
-              <p className="eyebrow">Редактор</p>
-              <h2>Новое занятие</h2>
+        <>
+          <section className="surface">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Нагрузка</p>
+                <h2>Предметы и преподаватели</h2>
+              </div>
+              <button className="primary-btn inline" onClick={() => void submitAssignment()} type="button">
+                <Link2 size={17} />
+                Связать
+              </button>
             </div>
-            <button className="primary-btn inline" onClick={() => void submitLesson()} type="button">
-              <Plus size={17} />
-              Добавить
-            </button>
-          </div>
-          <div className="form-grid">
-            <label>
-              <span>Группа</span>
-              <select value={form.groupId} onChange={(event) => setForm({ ...form, groupId: event.target.value })}>
-                {data.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
+            <div className="form-grid">
+              <label>
+                <span>Предмет</span>
+                <select value={assignmentForm.subjectId} onChange={(event) => setAssignmentForm({ ...assignmentForm, subjectId: event.target.value })}>
+                  {data.subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Преподаватель</span>
+                <select value={assignmentForm.teacherId} onChange={(event) => setAssignmentForm({ ...assignmentForm, teacherId: event.target.value })}>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Группа</span>
+                <select value={assignmentForm.groupId ?? ""} onChange={(event) => setAssignmentForm({ ...assignmentForm, groupId: event.target.value || null })}>
+                  <option value="">Для всех групп</option>
+                  {data.groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="relation-grid">
+              <div className="relation-panel">
+                <strong>По предметам</strong>
+                {assignedBySubject.map(({ assignments, subject }) => (
+                  <div className="relation-line" key={subject.id}>
+                    <span className="lesson-dot" style={{ background: subject.color }} />
+                    <b>{subject.shortTitle}</b>
+                    <small>
+                      {assignments.length
+                        ? assignments
+                            .map((item) => relationTeacherLabel(data, item.teacherId, item.groupId))
+                            .join(", ")
+                        : "Нет назначений"}
+                    </small>
+                  </div>
                 ))}
-              </select>
-            </label>
-            <label>
-              <span>Предмет</span>
-              <select value={form.subjectId} onChange={(event) => setForm({ ...form, subjectId: event.target.value })}>
-                {data.subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.title}
-                  </option>
+              </div>
+              <div className="relation-panel">
+                <strong>По преподавателям</strong>
+                {loadByTeacher.map(({ assignments, teacher }) => (
+                  <div className="relation-line" key={teacher.id}>
+                    <span className="avatar mini" style={{ background: teacher.avatarTone }}>
+                      {getInitials(teacher.fullName)}
+                    </span>
+                    <b>{teacher.fullName}</b>
+                    <small>
+                      {assignments.length
+                        ? assignments
+                            .map((item) => relationSubjectLabel(data, item.subjectId, item.groupId))
+                            .join(", ")
+                        : "Нет предметов"}
+                    </small>
+                  </div>
                 ))}
-              </select>
-            </label>
-            <label>
-              <span>Преподаватель</span>
-              <select value={form.teacherId ?? ""} onChange={(event) => setForm({ ...form, teacherId: event.target.value || null })}>
-                {teachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.fullName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>День</span>
-              <select value={form.weekday} onChange={(event) => setForm({ ...form, weekday: Number(event.target.value) })}>
-                {weekdays.map((day, index) => (
-                  <option key={day} value={index}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Начало</span>
-              <input type="time" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} />
-            </label>
-            <label>
-              <span>Конец</span>
-              <input type="time" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} />
-            </label>
-            <label>
-              <span>Аудитория</span>
-              <input value={form.room} onChange={(event) => setForm({ ...form, room: event.target.value })} />
-            </label>
-          </div>
-        </section>
+              </div>
+            </div>
+          </section>
+
+          <section className="surface">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Редактор</p>
+                <h2>Новое занятие</h2>
+              </div>
+              <button className="primary-btn inline" onClick={() => void submitLesson()} type="button">
+                <Plus size={17} />
+                Добавить
+              </button>
+            </div>
+            <div className="form-grid">
+              <label>
+                <span>Группа</span>
+                <select value={form.groupId} onChange={(event) => setForm({ ...form, groupId: event.target.value })}>
+                  {data.groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Предмет</span>
+                <select value={form.subjectId} onChange={(event) => setForm({ ...form, subjectId: event.target.value })}>
+                  {data.subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Преподаватель</span>
+                <select value={form.teacherId ?? ""} onChange={(event) => setForm({ ...form, teacherId: event.target.value || null })}>
+                  {teacherOptions.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>День</span>
+                <select value={form.weekday} onChange={(event) => setForm({ ...form, weekday: Number(event.target.value) })}>
+                  {weekdays.map((day, index) => (
+                    <option key={day} value={index}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Начало</span>
+                <input type="time" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} />
+              </label>
+              <label>
+                <span>Конец</span>
+                <input type="time" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} />
+              </label>
+              <label>
+                <span>Аудитория</span>
+                <input value={form.room} onChange={(event) => setForm({ ...form, room: event.target.value })} />
+              </label>
+            </div>
+          </section>
+        </>
       ) : null}
 
       <section className="schedule-grid">
@@ -1058,6 +1196,325 @@ function DirectoryView({
             </small>
           </article>
         ))}
+      </section>
+    </section>
+  );
+}
+
+function GradesView({
+  data,
+  setData,
+  showToast,
+  user,
+}: {
+  data: AppData;
+  setData: Dispatch<SetStateAction<AppData>>;
+  showToast: (message: string) => void;
+  user: SessionUser;
+}) {
+  const isStaff = user.role === "admin" || user.role === "teacher";
+  const groups = useMemo(
+    () => (user.role === "student" ? data.groups.filter((group) => group.id === user.groupId) : data.groups),
+    [data.groups, user.groupId, user.role],
+  );
+  const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
+  const [subjectId, setSubjectId] = useState(data.grades[0]?.subjectId ?? data.subjects[0]?.id ?? "");
+  const students = useMemo(
+    () =>
+      data.profiles.filter(
+        (profile) => profile.role === "student" && (!groupId || profile.groupId === groupId) && (isStaff || profile.id === user.id),
+      ),
+    [data.profiles, groupId, isStaff, user.id],
+  );
+  const categories = useMemo(
+    () => gradeCategoriesForScope(data, subjectId, groupId),
+    [data.gradeCategories, groupId, subjectId],
+  );
+  const [categoryDraft, setCategoryDraft] = useState({
+    title: "Контрольная",
+    coefficient: 3,
+    color: "#d92d54",
+  });
+  const [gradeDraft, setGradeDraft] = useState<Omit<GradeInput, "subjectId" | "lessonId" | "createdBy">>({
+    studentId: students[0]?.id ?? "",
+    categoryId: categories[0]?.id ?? "",
+    title: "Работа на занятии",
+    score: 85,
+    maxScore: 100,
+    gradedAt: todayISO(),
+    comment: "",
+  });
+
+  useEffect(() => {
+    if (!groups.some((group) => group.id === groupId)) {
+      setGroupId(groups[0]?.id ?? "");
+    }
+  }, [groups, groupId]);
+
+  useEffect(() => {
+    setGradeDraft((current) => {
+      const studentId = students.some((student) => student.id === current.studentId) ? current.studentId : students[0]?.id ?? "";
+      const categoryId = categories.some((category) => category.id === current.categoryId) ? current.categoryId : categories[0]?.id ?? "";
+      if (studentId === current.studentId && categoryId === current.categoryId) return current;
+      return { ...current, studentId, categoryId };
+    });
+  }, [categories, students]);
+
+  const rows = students.map((student) => ({
+    student,
+    final: calculateFinalGrade(data, student.id, subjectId, groupId),
+  }));
+  const gradedRows = rows.filter((row) => row.final);
+  const averageFinal = gradedRows.length
+    ? Math.round(gradedRows.reduce((sum, row) => sum + (row.final?.score ?? 0), 0) / gradedRows.length)
+    : 0;
+  const gradeCount = data.grades.filter((grade) => grade.subjectId === subjectId && students.some((student) => student.id === grade.studentId)).length;
+  const coefficientSum = categories.reduce((sum, category) => sum + category.coefficient, 0);
+
+  async function submitCategory() {
+    if (!subjectId) return;
+    try {
+      const category = await createGradeCategory(
+        {
+          subjectId,
+          groupId: groupId || null,
+          title: categoryDraft.title,
+          coefficient: Math.max(Number(categoryDraft.coefficient), 0.1),
+          color: categoryDraft.color,
+          sortOrder: data.gradeCategories.length * 10 + 10,
+          createdBy: user.id,
+        },
+        user.source === "demo",
+      );
+      setData((current) => ({ ...current, gradeCategories: [...current.gradeCategories, category] }));
+      showToast("Категория оценок добавлена.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось добавить категорию.");
+    }
+  }
+
+  async function submitGrade() {
+    if (!gradeDraft.studentId || !gradeDraft.categoryId || !subjectId) {
+      showToast("Выберите студента, предмет и категорию.");
+      return;
+    }
+
+    try {
+      const grade = await createGrade(
+        {
+          ...gradeDraft,
+          subjectId,
+          lessonId: null,
+          score: Math.max(0, Number(gradeDraft.score)),
+          maxScore: Math.max(1, Number(gradeDraft.maxScore)),
+          createdBy: user.id,
+        },
+        user.source === "demo",
+      );
+      setData((current) => ({ ...current, grades: [grade, ...current.grades] }));
+      showToast("Оценка сохранена, итог пересчитан.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось сохранить оценку.");
+    }
+  }
+
+  return (
+    <section className="view-stack">
+      <div className="toolbar surface">
+        <label>
+          <span>Группа</span>
+          <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Предмет</span>
+          <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+            {data.subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="soft-badge">Категории: {categories.length}</span>
+        <span className="soft-badge">Сумма коэффициентов: {coefficientSum.toFixed(1)}</span>
+      </div>
+
+      <div className="kpi-grid">
+        <MetricCard label="Средний итог" value={gradedRows.length ? `${averageFinal}%` : "0%"} helper="по выбранному предмету" tone="blue" />
+        <MetricCard label="Оценки" value={String(gradeCount)} helper="в журнале" tone="green" />
+        <MetricCard label="Категории" value={String(categories.length)} helper="с коэффициентами" tone="violet" />
+        <MetricCard label="Студенты" value={String(students.length)} helper="в группе" tone="amber" />
+      </div>
+
+      {isStaff ? (
+        <div className="split-grid">
+          <section className="surface">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Категории</p>
+                <h2>Вес оценок</h2>
+              </div>
+              <button className="primary-btn inline" onClick={() => void submitCategory()} type="button">
+                <Plus size={17} />
+                Добавить
+              </button>
+            </div>
+            <div className="form-grid two">
+              <label>
+                <span>Название</span>
+                <input value={categoryDraft.title} onChange={(event) => setCategoryDraft({ ...categoryDraft, title: event.target.value })} />
+              </label>
+              <label>
+                <span>Коэффициент</span>
+                <input
+                  min={0.1}
+                  step={0.1}
+                  type="number"
+                  value={categoryDraft.coefficient}
+                  onChange={(event) => setCategoryDraft({ ...categoryDraft, coefficient: Number(event.target.value) })}
+                />
+              </label>
+              <label>
+                <span>Цвет</span>
+                <input type="color" value={categoryDraft.color} onChange={(event) => setCategoryDraft({ ...categoryDraft, color: event.target.value })} />
+              </label>
+            </div>
+          </section>
+
+          <section className="surface">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Журнал оценок</p>
+                <h2>Новая оценка</h2>
+              </div>
+              <button className="primary-btn inline" onClick={() => void submitGrade()} type="button">
+                <GraduationCap size={17} />
+                Сохранить
+              </button>
+            </div>
+            <div className="form-grid two">
+              <label>
+                <span>Студент</span>
+                <select value={gradeDraft.studentId} onChange={(event) => setGradeDraft({ ...gradeDraft, studentId: event.target.value })}>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Категория</span>
+                <select value={gradeDraft.categoryId} onChange={(event) => setGradeDraft({ ...gradeDraft, categoryId: event.target.value })}>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.title} x{category.coefficient}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Работа</span>
+                <input value={gradeDraft.title} onChange={(event) => setGradeDraft({ ...gradeDraft, title: event.target.value })} />
+              </label>
+              <label>
+                <span>Дата</span>
+                <input type="date" value={gradeDraft.gradedAt} onChange={(event) => setGradeDraft({ ...gradeDraft, gradedAt: event.target.value })} />
+              </label>
+              <label>
+                <span>Балл</span>
+                <input min={0} type="number" value={gradeDraft.score} onChange={(event) => setGradeDraft({ ...gradeDraft, score: Number(event.target.value) })} />
+              </label>
+              <label>
+                <span>Максимум</span>
+                <input min={1} type="number" value={gradeDraft.maxScore} onChange={(event) => setGradeDraft({ ...gradeDraft, maxScore: Number(event.target.value) })} />
+              </label>
+              <label className="wide-control">
+                <span>Комментарий</span>
+                <input value={gradeDraft.comment} onChange={(event) => setGradeDraft({ ...gradeDraft, comment: event.target.value })} />
+              </label>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <section className="surface">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Итоги</p>
+            <h2>Финальная оценка</h2>
+          </div>
+        </div>
+        <div className="grades-table">
+          <div className="grades-row head">
+            <span>Студент</span>
+            <span>Финал</span>
+            <span>Оценка</span>
+            <span>Категории</span>
+          </div>
+          {rows.map(({ final, student }) => (
+            <div className="grades-row" key={student.id}>
+              <div className="person-cell">
+                <span className="avatar" style={{ background: student.avatarTone }}>
+                  {getInitials(student.fullName)}
+                </span>
+                <div>
+                  <strong>{student.fullName}</strong>
+                  <small>{findGroup(data.groups, student.groupId)?.name ?? "Без группы"}</small>
+                </div>
+              </div>
+              <b>{final ? `${Math.round(final.score)}%` : "Нет оценок"}</b>
+              <span className={`final-mark ${final?.tone ?? "neutral"}`}>{final?.mark ?? "-"}</span>
+              <div className="category-stack">
+                {final?.categories.length ? (
+                  final.categories.map((category) => (
+                    <span key={category.id} style={{ borderColor: category.color }}>
+                      {category.title}: {Math.round(category.average)}% x{category.coefficient}
+                    </span>
+                  ))
+                ) : (
+                  <span>Добавьте оценки по категориям</span>
+                )}
+              </div>
+            </div>
+          ))}
+          {!rows.length ? <EmptyState title="Нет студентов" text="Выберите группу со студентами." /> : null}
+        </div>
+      </section>
+
+      <section className="surface">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">История</p>
+            <h2>Последние оценки</h2>
+          </div>
+        </div>
+        <div className="grade-feed">
+          {data.grades
+            .filter((grade) => grade.subjectId === subjectId && students.some((student) => student.id === grade.studentId))
+            .slice(0, 8)
+            .map((grade) => {
+              const student = findProfile(data.profiles, grade.studentId);
+              const category = data.gradeCategories.find((item) => item.id === grade.categoryId);
+              return (
+                <article className="grade-card" key={grade.id}>
+                  <span className="lesson-dot" style={{ background: category?.color }} />
+                  <div>
+                    <strong>{grade.title}</strong>
+                    <small>{student?.fullName ?? "Студент"} · {category?.title ?? "Категория"} · {formatDateRu(grade.gradedAt)}</small>
+                  </div>
+                  <b>{Math.round((grade.score / grade.maxScore) * 100)}%</b>
+                </article>
+              );
+            })}
+          {!gradeCount ? <EmptyState title="Оценок пока нет" text="Добавьте первую оценку, и финальный балл появится автоматически." /> : null}
+        </div>
       </section>
     </section>
   );
@@ -1502,6 +1959,85 @@ function EmptyState({ text, title }: { text: string; title: string }) {
       </div>
     </div>
   );
+}
+
+function teacherCandidatesForSubject(
+  data: AppData,
+  subjectId: string,
+  groupId: string,
+  teachers: Profile[],
+) {
+  const scopedAssignments = data.subjectTeacherAssignments.filter(
+    (assignment) =>
+      assignment.subjectId === subjectId && (!assignment.groupId || assignment.groupId === groupId),
+  );
+  if (!scopedAssignments.length) return teachers;
+  const teacherIds = new Set(scopedAssignments.map((assignment) => assignment.teacherId));
+  return teachers.filter((teacher) => teacherIds.has(teacher.id));
+}
+
+function relationTeacherLabel(data: AppData, teacherId: string, groupId: string | null) {
+  const teacher = findProfile(data.profiles, teacherId);
+  const group = findGroup(data.groups, groupId);
+  return `${teacher?.fullName ?? "Преподаватель"}${group ? ` (${group.name})` : ""}`;
+}
+
+function relationSubjectLabel(data: AppData, subjectId: string, groupId: string | null) {
+  const subject = findSubject(data.subjects, subjectId);
+  const group = findGroup(data.groups, groupId);
+  return `${subject?.shortTitle ?? "Предмет"}${group ? ` (${group.name})` : ""}`;
+}
+
+function gradeCategoriesForScope(data: AppData, subjectId: string, groupId: string) {
+  return data.gradeCategories
+    .filter((category) => category.subjectId === subjectId && (!category.groupId || category.groupId === groupId))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+}
+
+function calculateFinalGrade(data: AppData, studentId: string, subjectId: string, groupId: string) {
+  const categories = gradeCategoriesForScope(data, subjectId, groupId);
+  const categorySummaries = categories
+    .map((category) => {
+      const grades = data.grades.filter(
+        (grade) =>
+          grade.studentId === studentId &&
+          grade.subjectId === subjectId &&
+          grade.categoryId === category.id,
+      );
+      if (!grades.length) return null;
+      const average =
+        grades.reduce((sum, grade) => sum + (grade.score / grade.maxScore) * 100, 0) / grades.length;
+      return {
+        id: category.id,
+        title: category.title,
+        coefficient: category.coefficient,
+        color: category.color,
+        average,
+      };
+    })
+    .filter(Boolean) as Array<{
+    id: string;
+    title: string;
+    coefficient: number;
+    color: string;
+    average: number;
+  }>;
+
+  if (!categorySummaries.length) return null;
+  const totalWeight = categorySummaries.reduce((sum, category) => sum + category.coefficient, 0);
+  const score = categorySummaries.reduce(
+    (sum, category) => sum + category.average * category.coefficient,
+    0,
+  ) / totalWeight;
+  const mark = gradeMark(score);
+  return { score, mark: mark.label, tone: mark.tone, categories: categorySummaries };
+}
+
+function gradeMark(score: number) {
+  if (score >= 90) return { label: "5 / отлично", tone: "excellent" };
+  if (score >= 75) return { label: "4 / хорошо", tone: "good" };
+  if (score >= 60) return { label: "3 / зачтено", tone: "warn" };
+  return { label: "2 / риск", tone: "danger" };
 }
 
 function scopedStudents(data: AppData, user: SessionUser) {

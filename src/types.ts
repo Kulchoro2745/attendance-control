@@ -13,6 +13,7 @@ export type ViewKey =
   | "journal"
   | "schedule"
   | "directory"
+  | "grades"
   | "reports"
   | "notifications";
 
@@ -52,6 +53,39 @@ export interface Lesson {
   startsAt: string;
   endsAt: string;
   room: string;
+}
+
+export interface SubjectTeacherAssignment {
+  id: string;
+  subjectId: string;
+  teacherId: string;
+  groupId: string | null;
+  createdAt: string;
+}
+
+export interface GradeCategory {
+  id: string;
+  subjectId: string;
+  groupId: string | null;
+  title: string;
+  coefficient: number;
+  color: string;
+  sortOrder: number;
+}
+
+export interface GradeRecord {
+  id: string;
+  studentId: string;
+  subjectId: string;
+  categoryId: string;
+  lessonId: string | null;
+  title: string;
+  score: number;
+  maxScore: number;
+  gradedAt: string;
+  comment: string;
+  createdBy: string | null;
+  createdAt: string;
 }
 
 export interface AttendanceRecord {
@@ -96,8 +130,11 @@ export interface AppData {
   profiles: Profile[];
   groups: Group[];
   subjects: Subject[];
+  subjectTeacherAssignments: SubjectTeacherAssignment[];
   lessons: Lesson[];
   attendance: AttendanceRecord[];
+  gradeCategories: GradeCategory[];
+  grades: GradeRecord[];
   notifications: NotificationItem[];
   notificationDeliveries: NotificationDelivery[];
 }
@@ -131,6 +168,36 @@ export interface LessonInput {
   startsAt: string;
   endsAt: string;
   room: string;
+}
+
+export interface SubjectTeacherInput {
+  subjectId: string;
+  teacherId: string;
+  groupId: string | null;
+  createdBy: string | null;
+}
+
+export interface GradeCategoryInput {
+  subjectId: string;
+  groupId: string | null;
+  title: string;
+  coefficient: number;
+  color: string;
+  sortOrder: number;
+  createdBy: string | null;
+}
+
+export interface GradeInput {
+  studentId: string;
+  subjectId: string;
+  categoryId: string;
+  lessonId: string | null;
+  title: string;
+  score: number;
+  maxScore: number;
+  gradedAt: string;
+  comment: string;
+  createdBy: string | null;
 }
 
 export interface ProfileInput {

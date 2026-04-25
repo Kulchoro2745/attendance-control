@@ -4,6 +4,10 @@ import type {
   AttendanceRecord,
   Group,
   GroupInput,
+  GradeCategory,
+  GradeCategoryInput,
+  GradeInput,
+  GradeRecord,
   Lesson,
   LessonInput,
   NotificationDelivery,
@@ -16,6 +20,8 @@ import type {
   Role,
   SessionUser,
   Subject,
+  SubjectTeacherAssignment,
+  SubjectTeacherInput,
 } from "../types";
 import { uid } from "../utils";
 import { isSupabaseConfigured, supabase } from "./supabase";
@@ -57,6 +63,39 @@ type DbLesson = {
   starts_at: string;
   ends_at: string;
   room: string;
+};
+
+type DbSubjectTeacher = {
+  id: string;
+  subject_id: string;
+  teacher_id: string;
+  group_id: string | null;
+  created_at: string;
+};
+
+type DbGradeCategory = {
+  id: string;
+  subject_id: string;
+  group_id: string | null;
+  title: string;
+  coefficient: number | string;
+  color: string | null;
+  sort_order: number | null;
+};
+
+type DbGradeRecord = {
+  id: string;
+  student_id: string;
+  subject_id: string;
+  category_id: string;
+  lesson_id: string | null;
+  title: string;
+  score: number | string;
+  max_score: number | string;
+  graded_at: string;
+  comment: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 type DbAttendance = {
@@ -155,6 +194,45 @@ function toLesson(row: DbLesson): Lesson {
   };
 }
 
+function toSubjectTeacher(row: DbSubjectTeacher): SubjectTeacherAssignment {
+  return {
+    id: row.id,
+    subjectId: row.subject_id,
+    teacherId: row.teacher_id,
+    groupId: row.group_id,
+    createdAt: row.created_at,
+  };
+}
+
+function toGradeCategory(row: DbGradeCategory): GradeCategory {
+  return {
+    id: row.id,
+    subjectId: row.subject_id,
+    groupId: row.group_id,
+    title: row.title,
+    coefficient: Number(row.coefficient),
+    color: row.color ?? "#2f63d9",
+    sortOrder: row.sort_order ?? 0,
+  };
+}
+
+function toGradeRecord(row: DbGradeRecord): GradeRecord {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    subjectId: row.subject_id,
+    categoryId: row.category_id,
+    lessonId: row.lesson_id,
+    title: row.title,
+    score: Number(row.score),
+    maxScore: Number(row.max_score),
+    gradedAt: row.graded_at,
+    comment: row.comment ?? "",
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  };
+}
+
 function toAttendance(row: DbAttendance): AttendanceRecord {
   return {
     id: row.id,
@@ -230,16 +308,22 @@ export async function loadAppData(forceDemo = false): Promise<AppData> {
     profiles,
     groups,
     subjects,
+    subjectTeacherAssignments,
     lessons,
     attendance,
+    gradeCategories,
+    grades,
     notifications,
     notificationDeliveries,
   ] = await Promise.all([
     client.from("profiles").select("*").order("full_name"),
     client.from("groups").select("*").order("course", { ascending: false }).order("name"),
     client.from("subjects").select("*").order("title"),
+    client.from("subject_teachers").select("*").order("created_at", { ascending: false }),
     client.from("lessons").select("*").order("weekday").order("starts_at"),
     client.from("attendance_records").select("*").order("date", { ascending: false }),
+    client.from("grade_categories").select("*").order("sort_order").order("title"),
+    client.from("grades").select("*").order("graded_at", { ascending: false }),
     client.from("notifications").select("*").order("created_at", { ascending: false }),
     client
       .from("notification_deliveries")
@@ -251,8 +335,11 @@ export async function loadAppData(forceDemo = false): Promise<AppData> {
     profiles,
     groups,
     subjects,
+    subjectTeacherAssignments,
     lessons,
     attendance,
+    gradeCategories,
+    grades,
     notifications,
     notificationDeliveries,
   ].forEach((result) => failIfError(result.error));
@@ -261,8 +348,13 @@ export async function loadAppData(forceDemo = false): Promise<AppData> {
     profiles: ((profiles.data ?? []) as DbProfile[]).map(toProfile),
     groups: ((groups.data ?? []) as DbGroup[]).map(toGroup),
     subjects: ((subjects.data ?? []) as DbSubject[]).map(toSubject),
+    subjectTeacherAssignments: ((subjectTeacherAssignments.data ?? []) as DbSubjectTeacher[]).map(
+      toSubjectTeacher,
+    ),
     lessons: ((lessons.data ?? []) as DbLesson[]).map(toLesson),
     attendance: ((attendance.data ?? []) as DbAttendance[]).map(toAttendance),
+    gradeCategories: ((gradeCategories.data ?? []) as DbGradeCategory[]).map(toGradeCategory),
+    grades: ((grades.data ?? []) as DbGradeRecord[]).map(toGradeRecord),
     notifications: ((notifications.data ?? []) as DbNotification[]).map(toNotification),
     notificationDeliveries: ((notificationDeliveries.data ?? []) as DbNotificationDelivery[]).map(
       toNotificationDelivery,
@@ -447,6 +539,127 @@ export async function createLesson(input: LessonInput, forceDemo = false) {
   data.lessons.push(lesson);
   saveDemoData(data);
   return lesson;
+}
+
+export async function createSubjectTeacherAssignment(
+  input: SubjectTeacherInput,
+  forceDemo = false,
+) {
+  if (isSupabaseConfigured && !forceDemo) {
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from("subject_teachers")
+      .insert({
+        subject_id: input.subjectId,
+        teacher_id: input.teacherId,
+        group_id: input.groupId,
+        created_by: input.createdBy,
+      })
+      .select("*")
+      .single();
+
+    failIfError(error);
+    return toSubjectTeacher(data as DbSubjectTeacher);
+  }
+
+  const data = loadDemoData();
+  const duplicate = data.subjectTeacherAssignments.some(
+    (item) =>
+      item.subjectId === input.subjectId &&
+      item.teacherId === input.teacherId &&
+      item.groupId === input.groupId,
+  );
+  if (duplicate) throw new Error("Такая связка уже есть.");
+  const assignment: SubjectTeacherAssignment = {
+    id: uid("subteach"),
+    subjectId: input.subjectId,
+    teacherId: input.teacherId,
+    groupId: input.groupId,
+    createdAt: new Date().toISOString(),
+  };
+  data.subjectTeacherAssignments.unshift(assignment);
+  saveDemoData(data);
+  return assignment;
+}
+
+export async function createGradeCategory(input: GradeCategoryInput, forceDemo = false) {
+  if (isSupabaseConfigured && !forceDemo) {
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from("grade_categories")
+      .insert({
+        subject_id: input.subjectId,
+        group_id: input.groupId,
+        title: input.title,
+        coefficient: input.coefficient,
+        color: input.color,
+        sort_order: input.sortOrder,
+        created_by: input.createdBy,
+      })
+      .select("*")
+      .single();
+
+    failIfError(error);
+    return toGradeCategory(data as DbGradeCategory);
+  }
+
+  const data = loadDemoData();
+  const category: GradeCategory = {
+    id: uid("gradecat"),
+    subjectId: input.subjectId,
+    groupId: input.groupId,
+    title: input.title,
+    coefficient: input.coefficient,
+    color: input.color,
+    sortOrder: input.sortOrder,
+  };
+  data.gradeCategories.push(category);
+  saveDemoData(data);
+  return category;
+}
+
+export async function createGrade(input: GradeInput, forceDemo = false) {
+  if (isSupabaseConfigured && !forceDemo) {
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from("grades")
+      .insert({
+        student_id: input.studentId,
+        subject_id: input.subjectId,
+        category_id: input.categoryId,
+        lesson_id: input.lessonId,
+        title: input.title,
+        score: input.score,
+        max_score: input.maxScore,
+        graded_at: input.gradedAt,
+        comment: input.comment,
+        created_by: input.createdBy,
+      })
+      .select("*")
+      .single();
+
+    failIfError(error);
+    return toGradeRecord(data as DbGradeRecord);
+  }
+
+  const data = loadDemoData();
+  const grade: GradeRecord = {
+    id: uid("grade"),
+    studentId: input.studentId,
+    subjectId: input.subjectId,
+    categoryId: input.categoryId,
+    lessonId: input.lessonId,
+    title: input.title,
+    score: input.score,
+    maxScore: input.maxScore,
+    gradedAt: input.gradedAt,
+    comment: input.comment,
+    createdBy: input.createdBy,
+    createdAt: new Date().toISOString(),
+  };
+  data.grades.unshift(grade);
+  saveDemoData(data);
+  return grade;
 }
 
 export async function createDemoProfile(input: ProfileInput, forceDemo = false) {
